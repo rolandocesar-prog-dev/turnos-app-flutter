@@ -1,0 +1,27 @@
+# Flutter / Dart
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+.pub-cache/
+.pub/
+build/
+coverage/
+*.iml
+
+# FVM: enlace local al SDK (la versión se declara en .fvmrc)
+.fvm/
+
+# Configuración de Firebase con identificadores del proyecto (se genera con flutterfire configure)
+lib/firebase_options.dart
+android/app/google-services.json
+ios/Runner/GoogleService-Info.plist
+
+# Entorno local
+.env
+
+# Editor / SO
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db

@@ -1,0 +1,62 @@
+# Turnos — App de reservas con Flutter y Firebase
+
+[![CI](https://github.com/rolandocesar-prog-dev/turnos-app-flutter/actions/workflows/ci.yml/badge.svg)](https://github.com/rolandocesar-prog-dev/turnos-app-flutter/actions/workflows/ci.yml)
+
+App para que canchas, consultorios y otros negocios con agenda publiquen sus horarios y sus
+clientes reserven, cancelen y reciban recordatorios, **sin reservas duplicadas**.
+
+> 🚧 Proyecto en desarrollo. El avance está en [`specs/tasks.md`](./specs/tasks.md).
+
+## Qué demuestra
+
+- Flutter multiplataforma (Android, iOS y web) con arquitectura por funcionalidad y por capas.
+- Estado con Riverpod y navegación con go_router.
+- Firestore en tiempo real con **transacciones** para evitar la doble reserva.
+- Reglas de seguridad de Firestore **con pruebas automatizadas**.
+- Notificaciones push con Cloud Functions y Firebase Cloud Messaging.
+- Pruebas unitarias, de widgets y de integración, con CI.
+
+## Stack
+
+Flutter · Dart · Riverpod · go_router · Firebase (Auth, Firestore, Cloud Functions, FCM, Hosting) ·
+GitHub Actions
+
+## Primeros pasos
+
+La versión de Flutter está fijada en `.fvmrc` y se usa con [FVM](https://fvm.app). En Windows, FVM
+necesita el Modo de desarrollador activado. Instala esa versión con:
+
+```bash
+fvm install
+```
+
+Este repositorio no incluye las carpetas de plataforma (`android/`, `ios/`, `web/`). Genéralas una
+sola vez con:
+
+```bash
+fvm flutter create . --org com.rolandovasquez --project-name turnos_app --platforms android,ios,web
+```
+
+`flutter create` no sobrescribe los archivos que ya existen. Revisa con `git status` lo que
+agregó y, si creó `test/widget_test.dart`, bórralo: la prueba del proyecto es
+`test/app_test.dart` y la plantilla por defecto busca un `MyApp` que no existe. Después:
+
+```bash
+fvm flutter pub get
+fvm dart format .
+fvm flutter analyze
+fvm flutter test
+fvm flutter run
+```
+
+## Cómo se desarrolla
+
+El proyecto sigue **Spec Driven Development**:
+
+- [`specs/requirements.md`](./specs/requirements.md): qué debe hacer, con criterios de aceptación.
+- [`specs/design.md`](./specs/design.md): arquitectura, modelo de datos y decisiones.
+- [`specs/tasks.md`](./specs/tasks.md): plan por hitos.
+
+## Licencia
+
+[MIT](./LICENSE)
