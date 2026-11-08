@@ -15,9 +15,9 @@ Cada tarea referencia su requisito. Marca `[x]` al terminar y haz un commit por 
 ## M1 · Fundamentos
 
 - [ ] `fvm flutter pub add flutter_riverpod go_router` y `ProviderScope` en `main.dart`.
-- [ ] Rutas con go_router y redirección según sesión.
-- [ ] Proyecto de Firebase (desarrollo) y `flutterfire configure`.
-- [ ] Emuladores de Firebase configurados para desarrollo y pruebas.
+- [ ] Firebase con los emuladores (Auth y Firestore) y el proyecto de demostración
+      `demo-turnos`; `firebase-tools` como dependencia de desarrollo (design.md §6).
+- [ ] Rutas con go_router y redirección según sesión (RF-01).
 
 ## M2 · Autenticación y catálogo (RF-01, RF-02)
 
@@ -37,6 +37,8 @@ Cada tarea referencia su requisito. Marca `[x]` al terminar y haz un commit por 
 
 ## M4 · Notificaciones y administración (RF-05, RF-06)
 
+- [ ] Proyecto real de Firebase y `flutterfire configure` (lo necesitan FCM, Cloud Functions y
+      Hosting; design.md §6).
 - [ ] FCM: registro de tokens por usuario.
 - [ ] Cloud Function programada: recordatorio 1 h antes.
 - [ ] Panel de administración: recursos, horarios, días bloqueados y reservas del día.

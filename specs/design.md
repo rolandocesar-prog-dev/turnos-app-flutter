@@ -87,3 +87,32 @@ falla y la app muestra "Ese horario acaba de ocuparse".
 | Widgets     | Pantallas con repositorios simulados (mocktail + overrides).   |
 | Integración | Flujo reservar → cancelar contra los emuladores de Firebase.   |
 | Reglas      | Accesos permitidos y denegados en Firestore.                   |
+
+## 6. Entornos de Firebase
+
+- **Desarrollo y pruebas: emuladores locales** con el proyecto de demostración `demo-turnos`. Los
+  proyectos `demo-*` solo existen en los emuladores: no hace falta una cuenta, no tienen costo y
+  no hay riesgo de tocar datos reales. Las reglas de seguridad (RNF-01) se prueban ahí de todos
+  modos.
+- **Proyecto real**: se crea en M4, cuando hacen falta FCM, Cloud Functions y Hosting, con
+  `flutterfire configure`, que genera `lib/firebase_options.dart`.
+- La app elige el entorno con `--dart-define=FIREBASE_ENV=…`; por ahora solo existe `emulators`,
+  que es el valor por defecto. Las opciones de `demo-turnos` (clave y app ficticias, que los
+  emuladores aceptan) viven en `lib/src/core/firebase/`.
+- Emuladores (`firebase.json`): Auth en el puerto 9099, Firestore en 8080 y la interfaz en 4000.
+  La app se conecta a `localhost` (web y escritorio) o a `10.0.2.2` (emulador de Android).
+- `firebase-tools` es una dependencia de desarrollo de npm (`package.json`), así su versión queda
+  fijada: `npm run emulators` los levanta.
+- Las pruebas de widgets no usan Firebase: reemplazan los providers de datos con overrides de
+  Riverpod.
+
+## 7. Navegación y sesión (RF-01)
+
+- `AuthRepository` (dominio) expone el usuario actual como `Stream<AppUser?>`; su implementación
+  con Firebase Auth vive en `data/`. `authStateProvider` lo publica con Riverpod.
+- `routerProvider` crea el `GoRouter` y se vuelve a evaluar cuando cambia la sesión
+  (`refreshListenable`). Redirección: sin sesión, cualquier ruta protegida lleva a `/login`; con
+  sesión, `/login` lleva al inicio. Mientras la sesión todavía se está cargando se muestra una
+  pantalla de espera, para no mandar al login a quien ya inició sesión.
+- Rutas de M1: `/` (inicio, protegida) y `/login` (pública). Las pantallas de acceso reales llegan
+  en M2.
