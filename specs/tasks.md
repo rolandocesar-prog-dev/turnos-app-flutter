@@ -14,7 +14,7 @@ Cada tarea referencia su requisito. Marca `[x]` al terminar y haz un commit por 
 
 ## M1 · Fundamentos
 
-- [ ] `fvm flutter pub add flutter_riverpod go_router` y `ProviderScope` en `main.dart`.
+- [x] `fvm flutter pub add flutter_riverpod go_router` y `ProviderScope` en `main.dart`.
 - [ ] Firebase con los emuladores (Auth y Firestore) y el proyecto de demostración
       `demo-turnos`; `firebase-tools` como dependencia de desarrollo (design.md §6).
 - [ ] Rutas con go_router y redirección según sesión (RF-01).
