@@ -1,0 +1,11 @@
+{
+  "name": "turnos-app-firebase",
+  "private": true,
+  "description": "Herramientas de Firebase para la app de turnos (emuladores; design.md §6).",
+  "scripts": {
+    "emulators": "firebase emulators:start --project demo-turnos"
+  },
+  "devDependencies": {
+    "firebase-tools": "^15.35.0"
+  }
+}
