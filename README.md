@@ -30,23 +30,28 @@ necesita el Modo de desarrollador activado. Instala esa versión con:
 fvm install
 ```
 
-Este repositorio no incluye las carpetas de plataforma (`android/`, `ios/`, `web/`). Genéralas una
-sola vez con:
+En desarrollo, la app usa los **emuladores de Firebase** con el proyecto de demostración
+`demo-turnos`: no hace falta una cuenta de Firebase (ver
+[`specs/design.md`](./specs/design.md) §6). Los emuladores necesitan Java 11 o superior y Node.js:
 
 ```bash
-fvm flutter create . --org com.rolandovasquez --project-name turnos_app --platforms android,ios,web
+npm ci                 # firebase-tools, fijado en package.json
+npm run emulators      # Auth :9099, Firestore :8080, interfaz en http://localhost:4000
 ```
 
-`flutter create` no sobrescribe los archivos que ya existen. Revisa con `git status` lo que
-agregó y, si creó `test/widget_test.dart`, bórralo: la prueba del proyecto es
-`test/app_test.dart` y la plantilla por defecto busca un `MyApp` que no existe. Después:
+En otra terminal:
 
 ```bash
 fvm flutter pub get
-fvm dart format .
+fvm flutter run -d chrome
+```
+
+Calidad (lo mismo que corre el CI):
+
+```bash
+fvm dart format --output=none --set-exit-if-changed .
 fvm flutter analyze
-fvm flutter test
-fvm flutter run
+fvm flutter test --coverage
 ```
 
 ## Cómo se desarrolla

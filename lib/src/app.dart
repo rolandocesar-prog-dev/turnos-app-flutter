@@ -1,21 +1,21 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'core/theme/app_theme.dart';
-import 'features/home/presentation/home_page.dart';
+import 'routing/app_router.dart';
 
-/// Raíz de la aplicación. La navegación con go_router y la inyección de
-/// dependencias con Riverpod se incorporan en el hito M1 (ver specs/tasks.md).
-class TurnosApp extends StatelessWidget {
+/// Raíz de la aplicación: tema y navegación con go_router (design.md §7).
+class TurnosApp extends ConsumerWidget {
   const TurnosApp({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    return MaterialApp(
+  Widget build(BuildContext context, WidgetRef ref) {
+    return MaterialApp.router(
       title: 'Turnos',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.light(),
       darkTheme: AppTheme.dark(),
-      home: const HomePage(),
+      routerConfig: ref.watch(routerProvider),
     );
   }
 }

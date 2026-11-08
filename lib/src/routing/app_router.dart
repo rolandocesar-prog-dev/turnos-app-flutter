@@ -1,0 +1,47 @@
+import 'package:flutter/foundation.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+
+import '../core/presentation/loading_page.dart';
+import '../features/auth/application/auth_providers.dart';
+import '../features/auth/domain/app_user.dart';
+import '../features/auth/presentation/login_page.dart';
+import '../features/home/presentation/home_page.dart';
+import 'session_redirect.dart';
+
+/// Router de la app: se vuelve a evaluar cada vez que cambia la sesión (design.md §7).
+final routerProvider = Provider<GoRouter>((ref) {
+  final session = ValueNotifier<AsyncValue<AppUser?>>(const AsyncLoading());
+  ref.listen(
+    authStateProvider,
+    (_, next) => session.value = next,
+    fireImmediately: true,
+  );
+
+  final router = GoRouter(
+    initialLocation: AppRoutes.loading,
+    refreshListenable: session,
+    redirect: (context, state) =>
+        sessionRedirect(session.value, state.matchedLocation),
+    routes: [
+      GoRoute(
+        path: AppRoutes.home,
+        builder: (context, state) => const HomePage(),
+      ),
+      GoRoute(
+        path: AppRoutes.login,
+        builder: (context, state) => const LoginPage(),
+      ),
+      GoRoute(
+        path: AppRoutes.loading,
+        builder: (context, state) => const LoadingPage(),
+      ),
+    ],
+  );
+
+  ref.onDispose(() {
+    router.dispose();
+    session.dispose();
+  });
+  return router;
+});
