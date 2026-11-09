@@ -31,3 +31,26 @@ jobs:
 
       - name: Pruebas
         run: flutter test --coverage
+
+  rules:
+    name: Reglas de Firestore
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+
+      # El emulador de Firestore necesita Java.
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - name: Dependencias
+        run: npm ci
+
+      - name: Pruebas de reglas en el emulador
+        run: npm run test:rules
