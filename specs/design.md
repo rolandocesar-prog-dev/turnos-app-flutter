@@ -207,8 +207,14 @@ desactivadas, así no hace falta el SDK de administración.
   así que un cliente modificado podría saltarse el límite, y dos reservas simultáneas del mismo
   usuario también. El control en el servidor llega en M4 con Cloud Functions. La doble reserva de
   una franja, en cambio, sí la impide el servidor.
-- **Franjas pasadas** (RF-03): la app no ofrece reservarlas (§9) y las reglas rechazan una reserva
-  con `startAt` en el pasado según la hora del servidor.
+  - El conteo (`countActiveUpcoming`) consulta `uid ==` y `startAt >` ahora, y filtra el estado en
+    la app: así usa el mismo índice compuesto (`uid`, `startAt`) que «Mis reservas», declarado en
+    `firestore.indexes.json`.
+- **Franjas pasadas** (RF-03): la app no ofrece reservarlas (§9); si la franja empieza mientras el
+  diálogo está abierto, al confirmar se rechaza con «Ese horario ya pasó». Las reglas rechazan
+  igual una reserva con `startAt` en el pasado según la hora del servidor.
+- Ambas comprobaciones son una función pura del dominio (`bookingBlocker`, con
+  `maxActiveBookings = 3`), con pruebas unitarias.
 - **Cancelar** (RF-04, `BookingRepository.cancel`): una transacción marca la reserva `cancelled`
   y borra su slot, que vuelve a estar disponible. Faltando menos de 2 horas, la app no ofrece
   cancelar y explica el motivo («Solo se puede cancelar hasta 2 horas antes»); las reglas lo

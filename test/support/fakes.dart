@@ -96,6 +96,14 @@ class FakeBookingRepository implements BookingRepository {
 
   final FakeSlotRepository slots;
   final booked = <String>[];
+  final _starts = <DateTime>[];
+
+  /// Reservas futuras activas que la persona ya tenía antes de la prueba.
+  int existingActive = 0;
+
+  @override
+  Future<int> countActiveUpcoming(String uid, DateTime now) async =>
+      existingActive + _starts.where((start) => start.isAfter(now)).length;
 
   /// Si no es `null`, la próxima reserva falla con este error.
   BookingFailure? failWith;
@@ -116,6 +124,7 @@ class FakeBookingRepository implements BookingRepository {
       throw failure;
     }
     booked.add('$uid:${resource.id}/${slot.id}');
+    _starts.add(slot.start);
     slots.take(resource.id, dateKey(slot.start), slot.id);
   }
 }

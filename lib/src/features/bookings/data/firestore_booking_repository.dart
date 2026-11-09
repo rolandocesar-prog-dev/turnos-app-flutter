@@ -12,6 +12,24 @@ class FirestoreBookingRepository implements BookingRepository {
 
   final FirebaseFirestore _firestore;
 
+  /// Usa el índice compuesto `uid` + `startAt` (firestore.indexes.json); el estado se filtra
+  /// aquí, porque las reservas futuras de una persona son pocas.
+  @override
+  Future<int> countActiveUpcoming(String uid, DateTime now) async {
+    try {
+      final snapshot = await _firestore
+          .collection('bookings')
+          .where('uid', isEqualTo: uid)
+          .where('startAt', isGreaterThan: Timestamp.fromDate(now))
+          .get();
+      return snapshot.docs
+          .where((doc) => doc.data()['status'] == 'active')
+          .length;
+    } on FirebaseException catch (error) {
+      throw BookingFailure(bookingFailureReasonFor(error.code));
+    }
+  }
+
   @override
   Future<void> book({
     required String uid,

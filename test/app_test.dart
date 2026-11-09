@@ -21,10 +21,11 @@ void main() {
   late FakeResourceRepository catalog;
   late FakeSlotRepository slots;
   late FakeBookingRepository bookings;
-  // Lunes 9 de noviembre de 2026, 10:10.
-  final now = DateTime(2026, 11, 9, 10, 10);
+  // Lunes 9 de noviembre de 2026, 10:10; una prueba la adelanta.
+  late DateTime now;
 
   setUp(() {
+    now = DateTime(2026, 11, 9, 10, 10);
     auth = FakeAuthRepository();
     profiles = FakeUserProfileRepository();
     catalog = FakeResourceRepository();
@@ -436,6 +437,54 @@ void main() {
             .isButton,
         isTrue,
       );
+    });
+
+    testWidgets('con 3 reservas activas no deja reservar otra', (tester) async {
+      await openConsultorio(tester);
+
+      for (final time in ['15:00', '15:30', '16:00']) {
+        await chooseAndConfirm(tester, time);
+      }
+      expect(bookings.booked, hasLength(3));
+
+      await chooseAndConfirm(tester, '16:30');
+
+      expect(
+        find.text(
+          'Ya tienes 3 reservas activas. Cancela una para reservar otra.',
+        ),
+        findsOneWidget,
+      );
+      expect(bookings.booked, hasLength(3));
+      expect(slot('16:30', 'disponible'), findsOneWidget);
+    });
+
+    testWidgets('las reservas que ya tenía también cuentan', (tester) async {
+      bookings.existingActive = 3;
+      await openConsultorio(tester);
+
+      await chooseAndConfirm(tester, '15:00');
+
+      expect(
+        find.textContaining('Ya tienes 3 reservas activas'),
+        findsOneWidget,
+      );
+      expect(bookings.booked, isEmpty);
+    });
+
+    testWidgets('si la franja empieza mientras se decide, no se reserva', (
+      tester,
+    ) async {
+      await openConsultorio(tester);
+
+      await tester.tap(slot('10:30', 'disponible'));
+      await tester.pumpAndSettle();
+      now = DateTime(2026, 11, 9, 10, 30);
+      await tester.tap(find.widgetWithText(FilledButton, 'Reservar'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Ese horario ya pasó. Elige otro.'), findsOneWidget);
+      expect(bookings.booked, isEmpty);
     });
 
     testWidgets('mientras reserva, no se puede tocar otra franja', (

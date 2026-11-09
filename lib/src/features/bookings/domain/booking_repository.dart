@@ -3,6 +3,9 @@ import '../../resources/domain/slot_calculator.dart';
 
 /// Reservas del usuario (RF-03, RF-04). Los errores llegan como `BookingFailure`.
 abstract interface class BookingRepository {
+  /// Cuántas reservas `active` de [uid] empiezan después de [now] (límite de RF-03).
+  Future<int> countActiveUpcoming(String uid, DateTime now);
+
   /// Reserva [slot] de [resource] a nombre de [uid]. Falla con `slotTaken` si la franja ya está
   /// ocupada (design.md §10).
   Future<void> book({
