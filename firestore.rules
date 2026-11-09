@@ -36,10 +36,61 @@ service cloud.firestore {
       allow write: if isAdmin();
 
       // Ocupación de franjas: se lee para mostrar el estado (RF-02). Solo datos opacos.
-      // Crear y borrar franjas (reservar y cancelar) llega con sus reglas en M3.
       match /slots/{slotId} {
         allow read: if signedIn();
+
+        // Reservar (RF-03): el slot solo se CREA si no existe (pisarlo sería una actualización,
+        // que no está permitida), junto con su reserva en la misma transacción.
+        allow create: if signedIn()
+          && request.resource.data.keys().hasOnly(['bookingId', 'uid', 'createdAt'])
+          && request.resource.data.uid == request.auth.uid
+          && request.resource.data.createdAt == request.time
+          && bookingAfter(request.resource.data.bookingId).uid == request.auth.uid
+          && bookingAfter(request.resource.data.bookingId).resourceId == resourceId
+          && bookingAfter(request.resource.data.bookingId).slotId == slotId
+          && bookingAfter(request.resource.data.bookingId).status == 'active';
+
+        // Cancelar (RF-04): el dueño libera su slot solo si la reserva queda cancelada.
+        allow delete: if signedIn()
+          && resource.data.uid == request.auth.uid
+          && bookingAfter(resource.data.bookingId).status == 'cancelled';
       }
+    }
+
+    // Reserva tal como quedará al terminar la transacción.
+    function bookingAfter(bookingId) {
+      return getAfter(/databases/$(database)/documents/bookings/$(bookingId)).data;
+    }
+
+    match /bookings/{bookingId} {
+      // Cada cliente lee solo sus reservas (las consultas deben filtrar por su uid).
+      allow read: if signedIn() && resource.data.uid == request.auth.uid;
+
+      allow create: if isOwner(request.resource.data.uid)
+        && request.resource.data.keys().hasOnly([
+          'resourceId', 'resourceName', 'slotId', 'uid', 'startAt', 'endAt', 'status', 'createdAt'
+        ])
+        && request.resource.data.status == 'active'
+        && request.resource.data.createdAt == request.time
+        && request.resource.data.startAt is timestamp
+        && request.resource.data.startAt > request.time
+        && request.resource.data.endAt > request.resource.data.startAt
+        && get(/databases/$(database)/documents/resources/$(request.resource.data.resourceId))
+          .data.active == true
+        && getAfter(/databases/$(database)/documents/resources/$(request.resource.data.resourceId)/slots/$(request.resource.data.slotId))
+          .data.bookingId == bookingId;
+
+      // Cancelar con al menos 2 horas de anticipación, según la hora del servidor.
+      allow update: if isOwner(resource.data.uid)
+        && resource.data.status == 'active'
+        && request.resource.data.status == 'cancelled'
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'cancelledAt'])
+        && request.resource.data.cancelledAt == request.time
+        && request.time <= resource.data.startAt - duration.value(2, 'h')
+        // La franja se libera en la misma transacción.
+        && !existsAfter(/databases/$(database)/documents/resources/$(resource.data.resourceId)/slots/$(resource.data.slotId));
+
+      allow delete: if false;
     }
   }
 }

@@ -9,7 +9,20 @@ import {
   assertSucceeds,
   initializeTestEnvironment,
 } from '@firebase/rules-unit-testing';
-import { deleteDoc, doc, getDoc, serverTimestamp, setDoc, updateDoc } from 'firebase/firestore';
+import {
+  Timestamp,
+  collection,
+  deleteDoc,
+  doc,
+  getDoc,
+  getDocs,
+  query,
+  serverTimestamp,
+  setDoc,
+  updateDoc,
+  where,
+  writeBatch,
+} from 'firebase/firestore';
 
 const ANA = { uid: 'ana', email: 'ana@ejemplo.com' };
 const LUIS = { uid: 'luis', email: 'luis@ejemplo.com' };
@@ -127,17 +140,170 @@ describe('resources/{id}/slots/{slotId}', () => {
     await assertFails(getDoc(slot(anonymous())));
   });
 
-  test('todavía nadie crea ni borra franjas (reservar llega en M3)', async () => {
+  test('una franja suelta, sin su reserva, no se crea ni se borra', async () => {
     const libre = doc(as(ANA), 'resources', 'cancha-1', 'slots', '2026-11-10T19:00');
-    await assertFails(setDoc(libre, { bookingId: 'b2', uid: ANA.uid }));
+    await assertFails(setDoc(libre, { bookingId: 'b2', uid: ANA.uid, createdAt: serverTimestamp() }));
     await assertFails(deleteDoc(slot(as(LUIS))));
     await assertFails(deleteDoc(slot(as(ADMIN))));
   });
 });
 
+// Reservar y cancelar (RF-03, RF-04, design.md §10): la reserva y su franja van en un mismo lote.
+describe('bookings/{id} con su franja', () => {
+  const HOUR = 60 * 60 * 1000;
+  const SLOT_ID = '2026-12-01T10:00';
+  const bookingRef = (db, id = 'bk1') => doc(db, 'bookings', id);
+  const slotRef = (db, slotId = SLOT_ID, resourceId = 'cancha-1') =>
+    doc(db, 'resources', resourceId, 'slots', slotId);
+
+  const reservar = (user, opciones = {}) => {
+    const {
+      bookingId = 'bk1',
+      slotId = SLOT_ID,
+      resourceId = 'cancha-1',
+      startAt = new Date(Date.now() + 24 * HOUR),
+      booking = {},
+      slot = {},
+      soloReserva = false,
+      soloFranja = false,
+    } = opciones;
+    const db = as(user);
+    const batch = writeBatch(db);
+    if (!soloFranja) {
+      batch.set(bookingRef(db, bookingId), {
+        resourceId,
+        resourceName: 'Cancha 1',
+        slotId,
+        uid: user.uid,
+        startAt: Timestamp.fromDate(startAt),
+        endAt: Timestamp.fromDate(new Date(startAt.getTime() + HOUR)),
+        status: 'active',
+        createdAt: serverTimestamp(),
+        ...booking,
+      });
+    }
+    if (!soloReserva) {
+      batch.set(slotRef(db, slotId, resourceId), {
+        bookingId,
+        uid: user.uid,
+        createdAt: serverTimestamp(),
+        ...slot,
+      });
+    }
+    return batch.commit();
+  };
+
+  const cancelar = (user, { bookingId = 'bk1', liberar = true, cambios = {} } = {}) => {
+    const db = as(user);
+    const batch = writeBatch(db);
+    batch.update(bookingRef(db, bookingId), {
+      status: 'cancelled',
+      cancelledAt: serverTimestamp(),
+      ...cambios,
+    });
+    if (liberar) batch.delete(slotRef(db));
+    return batch.commit();
+  };
+
+  beforeEach(async () => {
+    await env.withSecurityRulesDisabled(async (context) => {
+      const db = context.firestore();
+      await setDoc(doc(db, 'resources', 'sala'), { name: 'Sala', active: false });
+      await setDoc(slotRef(db, '2026-12-01T11:00'), { bookingId: 'otra', uid: LUIS.uid });
+    });
+  });
+
+  test('se reserva una franja futura y libre', async () => {
+    await assertSucceeds(reservar(ANA));
+    const franja = await getDoc(slotRef(as(LUIS)));
+    assert.equal(franja.data().bookingId, 'bk1');
+  });
+
+  test('la reserva o la franja por separado no se aceptan', async () => {
+    await assertFails(reservar(ANA, { soloReserva: true }));
+    await assertFails(reservar(ANA, { soloFranja: true }));
+  });
+
+  test('una franja ocupada no se vuelve a reservar', async () => {
+    await assertFails(reservar(ANA, { slotId: '2026-12-01T11:00' }));
+    await assertSucceeds(reservar(ANA));
+    await assertFails(reservar(LUIS, { bookingId: 'bk2' }));
+  });
+
+  test('no se reserva en el pasado ni en un recurso inactivo', async () => {
+    await assertFails(reservar(ANA, { startAt: new Date(Date.now() - HOUR) }));
+    await assertFails(reservar(ANA, { resourceId: 'sala' }));
+    await assertFails(reservar(ANA, { resourceId: 'no-existe' }));
+  });
+
+  test('la reserva es de quien tiene la sesión', async () => {
+    await assertFails(reservar(ANA, { booking: { uid: LUIS.uid } }));
+    await assertFails(reservar(ANA, { slot: { uid: LUIS.uid } }));
+    await assertFails(reservar(ANA, { booking: { status: 'cancelled' } }));
+  });
+
+  test('la franja y la reserva deben apuntarse entre sí', async () => {
+    await assertFails(reservar(ANA, { booking: { slotId: '2026-12-01T12:00' } }));
+    await assertFails(reservar(ANA, { slot: { bookingId: 'otra' } }));
+  });
+
+  test('no se aceptan campos fuera del modelo', async () => {
+    await assertFails(reservar(ANA, { booking: { precio: 0 } }));
+    await assertFails(reservar(ANA, { slot: { nota: 'x' } }));
+  });
+
+  test('cada cliente lee solo sus reservas', async () => {
+    await assertSucceeds(reservar(ANA));
+    await assertSucceeds(getDoc(bookingRef(as(ANA))));
+    await assertFails(getDoc(bookingRef(as(LUIS))));
+    await assertFails(getDoc(bookingRef(anonymous())));
+    const bookings = collection(as(ANA), 'bookings');
+    await assertSucceeds(getDocs(query(bookings, where('uid', '==', ANA.uid))));
+    await assertFails(getDocs(bookings));
+  });
+
+  test('se cancela con más de 2 horas de anticipación y la franja queda libre', async () => {
+    await assertSucceeds(reservar(ANA));
+    await assertSucceeds(cancelar(ANA));
+    const franja = await getDoc(slotRef(as(LUIS)));
+    assert.equal(franja.exists(), false);
+    await assertSucceeds(reservar(LUIS, { bookingId: 'bk2' }));
+  });
+
+  test('a menos de 2 horas ya no se cancela', async () => {
+    await assertSucceeds(reservar(ANA, { startAt: new Date(Date.now() + HOUR) }));
+    await assertFails(cancelar(ANA));
+  });
+
+  test('cancelar exige liberar la franja, y la franja solo se libera cancelando', async () => {
+    await assertSucceeds(reservar(ANA));
+    await assertFails(cancelar(ANA, { liberar: false }));
+    await assertFails(deleteDoc(slotRef(as(ANA))));
+  });
+
+  test('nadie cancela la reserva de otro', async () => {
+    await assertSucceeds(reservar(ANA));
+    await assertFails(cancelar(LUIS));
+    await assertFails(cancelar(ADMIN));
+  });
+
+  test('al cancelar solo cambian el estado y la fecha de cancelación', async () => {
+    await assertSucceeds(reservar(ANA));
+    const otraHora = Timestamp.fromDate(new Date(Date.now() + 48 * HOUR));
+    await assertFails(cancelar(ANA, { cambios: { startAt: otraHora } }));
+  });
+
+  test('una reserva cancelada no se reactiva ni se borra', async () => {
+    await assertSucceeds(reservar(ANA));
+    await assertSucceeds(cancelar(ANA));
+    await assertFails(updateDoc(bookingRef(as(ANA)), { status: 'active' }));
+    await assertFails(deleteDoc(bookingRef(as(ANA))));
+  });
+});
+
 describe('cualquier otra colección', () => {
   test('está cerrada', async () => {
-    await assertFails(getDoc(doc(as(ADMIN), 'bookings', 'b1')));
-    await assertFails(setDoc(doc(as(ANA), 'bookings', 'b1'), { uid: ANA.uid }));
+    await assertFails(getDoc(doc(as(ADMIN), 'pagos', 'p1')));
+    await assertFails(setDoc(doc(as(ANA), 'pagos', 'p1'), { uid: ANA.uid }));
   });
 });
