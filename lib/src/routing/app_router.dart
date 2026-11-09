@@ -6,6 +6,7 @@ import '../core/presentation/loading_page.dart';
 import '../features/auth/application/auth_providers.dart';
 import '../features/auth/domain/app_user.dart';
 import '../features/auth/presentation/login_page.dart';
+import '../features/bookings/presentation/my_bookings_page.dart';
 import '../features/resources/presentation/catalog_page.dart';
 import '../features/resources/presentation/resource_detail_page.dart';
 import 'session_redirect.dart';
@@ -34,6 +35,10 @@ final routerProvider = Provider<GoRouter>((ref) {
             path: 'recursos/:id',
             builder: (context, state) =>
                 ResourceDetailPage(resourceId: state.pathParameters['id']!),
+          ),
+          GoRoute(
+            path: 'mis-reservas',
+            builder: (context, state) => const MyBookingsPage(),
           ),
         ],
       ),

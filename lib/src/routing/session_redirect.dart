@@ -7,6 +7,7 @@ abstract final class AppRoutes {
   static const home = '/';
   static const login = '/login';
   static const loading = '/cargando';
+  static const myBookings = '/mis-reservas';
 }
 
 /// Regla de redirección según la sesión (RF-01). Devuelve la ruta a la que hay que ir o

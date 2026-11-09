@@ -8,6 +8,7 @@ import 'package:turnos_app/src/features/auth/application/auth_providers.dart';
 import 'package:turnos_app/src/features/auth/domain/app_user.dart';
 import 'package:turnos_app/src/features/auth/domain/auth_failure.dart';
 import 'package:turnos_app/src/features/bookings/application/booking_providers.dart';
+import 'package:turnos_app/src/features/bookings/domain/booking.dart';
 import 'package:turnos_app/src/features/bookings/domain/booking_failure.dart';
 import 'package:turnos_app/src/features/resources/application/resource_providers.dart';
 import 'package:turnos_app/src/features/resources/domain/resource.dart';
@@ -460,7 +461,9 @@ void main() {
     });
 
     testWidgets('las reservas que ya tenía también cuentan', (tester) async {
-      bookings.existingActive = 3;
+      for (final day in [10, 11, 12]) {
+        bookings.add(testBooking('f$day', DateTime(2026, 11, day, 9)));
+      }
       await openConsultorio(tester);
 
       await chooseAndConfirm(tester, '15:00');
@@ -470,6 +473,30 @@ void main() {
         findsOneWidget,
       );
       expect(bookings.booked, isEmpty);
+    });
+
+    testWidgets('las pasadas, las canceladas y las de otros no cuentan', (
+      tester,
+    ) async {
+      bookings
+        ..add(testBooking('p', DateTime(2026, 11, 2, 9)))
+        ..add(
+          testBooking(
+            'c',
+            DateTime(2026, 11, 10, 9),
+            status: BookingStatus.cancelled,
+          ),
+        )
+        ..add(testBooking('o1', DateTime(2026, 11, 10, 10), uid: 'otro'))
+        ..add(testBooking('o2', DateTime(2026, 11, 10, 11), uid: 'otro'))
+        ..add(testBooking('o3', DateTime(2026, 11, 10, 12), uid: 'otro'))
+        ..add(testBooking('f1', DateTime(2026, 11, 11, 9)))
+        ..add(testBooking('f2', DateTime(2026, 11, 12, 9)));
+      await openConsultorio(tester);
+
+      await chooseAndConfirm(tester, '15:00');
+
+      expect(bookings.booked, ['u1:consultorio/2026-11-09T15:00']);
     });
 
     testWidgets('si la franja empieza mientras se decide, no se reserva', (
@@ -487,6 +514,19 @@ void main() {
       expect(bookings.booked, isEmpty);
     });
 
+    testWidgets('la reserva nueva aparece en Mis reservas', (tester) async {
+      await openConsultorio(tester);
+      await chooseAndConfirm(tester, '15:00');
+
+      await tester.tap(find.byType(BackButton));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byTooltip('Mis reservas'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Consultorio dental'), findsOneWidget);
+      expect(find.text('Hoy, 15:00–16:00'), findsOneWidget);
+    });
+
     testWidgets('mientras reserva, no se puede tocar otra franja', (
       tester,
     ) async {
@@ -501,6 +541,170 @@ void main() {
       bookings.hold!.complete();
       await tester.pumpAndSettle();
       expect(bookings.booked, ['u1:consultorio/2026-11-09T15:00']);
+    });
+  });
+
+  group('Mis reservas y cancelación (RF-04)', () {
+    // A las 10:10: la de las 15:00 se puede cancelar; la de las 11:30, ya no (faltan 1 h 20 min).
+    void seedBookings() {
+      bookings
+        ..add(testBooking('tarde', DateTime(2026, 11, 9, 15)))
+        ..add(testBooking('pronto', DateTime(2026, 11, 9, 11, 30)))
+        ..add(
+          testBooking(
+            'cancelada',
+            DateTime(2026, 11, 20, 9),
+            resource: testCancha,
+            status: BookingStatus.cancelled,
+          ),
+        )
+        ..add(testBooking('vieja', DateTime(2026, 11, 2, 9)))
+        ..add(testBooking('ajena', DateTime(2026, 11, 9, 17), uid: 'otro'));
+      slots.setTaken(
+        'consultorio',
+        '2026-11-09',
+        {'2026-11-09T11:30', '2026-11-09T15:00'},
+      );
+    }
+
+    Future<void> openMyBookings(WidgetTester tester) async {
+      tester.view.physicalSize = const Size(800, 1600);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+      await showCatalog(tester);
+      await tester.tap(find.byTooltip('Mis reservas'));
+      await tester.pumpAndSettle();
+    }
+
+    Finder cancelButton() => find.widgetWithText(TextButton, 'Cancelar');
+
+    Future<void> cancelFirst(WidgetTester tester) async {
+      await tester.tap(cancelButton());
+      await tester.pumpAndSettle();
+      await tester.tap(find.widgetWithText(FilledButton, 'Cancelar reserva'));
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets(
+        'muestra las próximas en orden y las anteriores, sin las ajenas',
+        (tester) async {
+      seedBookings();
+      await openMyBookings(tester);
+
+      expect(find.text('Próximas'), findsOneWidget);
+      expect(find.text('Anteriores'), findsOneWidget);
+      final soon =
+          tester.getTopLeft(find.textContaining('Hoy, 11:30–12:30')).dy;
+      final later =
+          tester.getTopLeft(find.textContaining('Hoy, 15:00–16:00')).dy;
+      expect(soon, lessThan(later));
+      expect(find.text('vie 20 nov, 09:00–10:00\nCancelada'), findsOneWidget);
+      expect(find.text('lun 2 nov, 09:00–10:00\nYa pasó'), findsOneWidget);
+      expect(find.textContaining('17:00'), findsNothing);
+    });
+
+    testWidgets('a menos de 2 horas no se ofrece cancelar y se explica por qué',
+        (tester) async {
+      seedBookings();
+      await openMyBookings(tester);
+
+      expect(
+        find.text(
+          'Hoy, 11:30–12:30\nSolo se puede cancelar hasta 2 horas antes.',
+        ),
+        findsOneWidget,
+      );
+      // Solo la de las 15:00 tiene botón.
+      expect(cancelButton(), findsOneWidget);
+    });
+
+    testWidgets('cancelar pasa la reserva a anteriores y libera la franja', (
+      tester,
+    ) async {
+      seedBookings();
+      await openMyBookings(tester);
+
+      await tester.tap(cancelButton());
+      await tester.pumpAndSettle();
+      expect(find.text('¿Cancelar esta reserva?'), findsOneWidget);
+      expect(
+        find.text('Consultorio dental\nHoy, 15:00–16:00'),
+        findsOneWidget,
+      );
+      await tester.tap(find.widgetWithText(FilledButton, 'Cancelar reserva'));
+      await tester.pumpAndSettle();
+
+      expect(bookings.cancelled, ['tarde']);
+      expect(
+        find.text('Reserva cancelada. El horario quedó libre.'),
+        findsOneWidget,
+      );
+      expect(find.text('Hoy, 15:00–16:00\nCancelada'), findsOneWidget);
+      expect(cancelButton(), findsNothing);
+
+      await tester.tap(find.byType(BackButton));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Consultorio dental'));
+      await tester.pumpAndSettle();
+      expect(
+        find.bySemanticsLabel('15:00, disponible'),
+        findsOneWidget,
+      );
+      expect(find.bySemanticsLabel('11:30, ocupada'), findsOneWidget);
+    });
+
+    testWidgets('volver del diálogo no cancela', (tester) async {
+      seedBookings();
+      await openMyBookings(tester);
+
+      await tester.tap(cancelButton());
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Volver'));
+      await tester.pumpAndSettle();
+
+      expect(bookings.cancelled, isEmpty);
+      expect(cancelButton(), findsOneWidget);
+    });
+
+    testWidgets('si vence el plazo con el diálogo abierto, no cancela', (
+      tester,
+    ) async {
+      seedBookings();
+      await openMyBookings(tester);
+
+      await tester.tap(cancelButton());
+      await tester.pumpAndSettle();
+      now = DateTime(2026, 11, 9, 13, 1);
+      await tester.tap(find.widgetWithText(FilledButton, 'Cancelar reserva'));
+      await tester.pumpAndSettle();
+
+      expect(bookings.cancelled, isEmpty);
+      expect(
+        find.text('Solo se puede cancelar hasta 2 horas antes.'),
+        findsOneWidget,
+      );
+    });
+
+    testWidgets('si el servidor la rechaza, muestra el motivo', (tester) async {
+      seedBookings();
+      await openMyBookings(tester);
+      bookings.failWith =
+          const BookingFailure(BookingFailureReason.tooLateToCancel);
+
+      await cancelFirst(tester);
+
+      expect(bookings.cancelled, isEmpty);
+      expect(
+        find.text('Solo se puede cancelar hasta 2 horas antes.'),
+        findsOneWidget,
+      );
+    });
+
+    testWidgets('sin reservas lo dice', (tester) async {
+      await openMyBookings(tester);
+
+      expect(find.text('No tienes reservas próximas.'), findsOneWidget);
+      expect(find.text('Anteriores'), findsNothing);
     });
   });
 }

@@ -215,15 +215,18 @@ desactivadas, así no hace falta el SDK de administración.
   igual una reserva con `startAt` en el pasado según la hora del servidor.
 - Ambas comprobaciones son una función pura del dominio (`bookingBlocker`, con
   `maxActiveBookings = 3`), con pruebas unitarias.
-- **Cancelar** (RF-04, `BookingRepository.cancel`): una transacción marca la reserva `cancelled`
-  y borra su slot, que vuelve a estar disponible. Faltando menos de 2 horas, la app no ofrece
+- **Cancelar** (RF-04, `BookingRepository.cancel`): un lote atómico (*batch*; no hace falta leer
+  nada antes, así que no es una transacción) marca la reserva `cancelled` y borra su slot, que
+  vuelve a estar disponible. Faltando menos de 2 horas, la app no ofrece
   cancelar y explica el motivo («Solo se puede cancelar hasta 2 horas antes»); las reglas lo
   rechazan igual con la hora del servidor. La regla de las 2 horas es una función pura del
   dominio (`canCancel`), con la misma frontera que las reglas.
-- **Mis reservas** (`/mis-reservas`): las próximas activas, en orden, con su botón de cancelar; y
-  las anteriores (pasadas o canceladas), sin acciones. Escucha en tiempo real las reservas del
-  usuario. En el proyecto real, la consulta por `uid` y `startAt` necesitará un índice compuesto,
-  declarado en `firestore.indexes.json`.
+- **Mis reservas** (`/mis-reservas`, desde el ícono de la barra del catálogo): las próximas
+  activas, de la más cercana a la más lejana, con su botón de cancelar (o el motivo por el que ya
+  no se puede); y las anteriores (pasadas o canceladas), de la más reciente a la más vieja, sin
+  acciones. Escucha en tiempo real las reservas del usuario (`uid ==`, ordenadas por `startAt`),
+  con el índice compuesto de `firestore.indexes.json`. Cancelar pide confirmación y avisa el
+  resultado; una reserva mal formada se omite, como en el catálogo.
 - **Errores**: `BookingFailure` con mensajes en español (franja ocupada, franja no disponible,
   límite alcanzado, franja pasada, fuera de plazo para cancelar, sin conexión, desconocido); un
   rechazo de las reglas (`permission-denied`) se traduce según la acción: al reservar, «Ese horario

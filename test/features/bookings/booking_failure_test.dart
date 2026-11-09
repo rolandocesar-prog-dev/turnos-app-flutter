@@ -12,6 +12,13 @@ void main() {
     );
   });
 
+  test('un rechazo de las reglas al cancelar es el plazo de 2 horas', () {
+    expect(
+      bookingFailureReasonFor('permission-denied', cancelling: true),
+      BookingFailureReason.tooLateToCancel,
+    );
+  });
+
   test('sin conexión lo dice; lo demás es un error genérico', () {
     expect(
       bookingFailureReasonFor('unavailable'),

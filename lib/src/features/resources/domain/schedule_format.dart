@@ -34,6 +34,33 @@ abstract final class ScheduleFormat {
     };
   }
 
+  static const _shortMonths = [
+    'ene',
+    'feb',
+    'mar',
+    'abr',
+    'may',
+    'jun',
+    'jul',
+    'ago',
+    'sept',
+    'oct',
+    'nov',
+    'dic',
+  ];
+
+  /// «Hoy», «Mañana» o «mié 11 nov», para fechas que pueden estar lejos (Mis reservas).
+  static String dateLabel(DateTime day, DateTime today) {
+    final label = dayLabel(day, today);
+    return label.contains(' ')
+        ? '$label ${_shortMonths[day.month - 1]}'
+        : label;
+  }
+
+  /// Hora de [moment] como «HH:mm».
+  static String clock(DateTime moment) =>
+      time(moment.hour * 60 + moment.minute);
+
   /// Minutos desde la medianoche como «HH:mm».
   static String time(int minutes) =>
       '${(minutes ~/ 60).toString().padLeft(2, '0')}:${(minutes % 60).toString().padLeft(2, '0')}';

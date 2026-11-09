@@ -18,6 +18,24 @@ void main() {
     expect(ScheduleFormat.ranges(const []), 'Cerrado');
   });
 
+  test('fecha de una reserva: hoy, mañana o con el mes', () {
+    final today = DateTime(2026, 11, 9, 10);
+    expect(ScheduleFormat.dateLabel(DateTime(2026, 11, 9, 18), today), 'Hoy');
+    expect(
+      ScheduleFormat.dateLabel(DateTime(2026, 11, 10, 8), today),
+      'Mañana',
+    );
+    expect(
+      ScheduleFormat.dateLabel(DateTime(2026, 12, 2, 8), today),
+      'mié 2 dic',
+    );
+    expect(
+      ScheduleFormat.dateLabel(DateTime(2026, 11, 2, 8), today),
+      'lun 2 nov',
+    );
+    expect(ScheduleFormat.clock(DateTime(2026, 11, 9, 7, 5)), '07:05');
+  });
+
   test('duración del turno', () {
     expect(ScheduleFormat.slotDuration(30), 'Turnos de 30 min');
     expect(ScheduleFormat.slotDuration(60), 'Turnos de 1 h');

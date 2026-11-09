@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../routing/session_redirect.dart';
 import '../../auth/application/auth_controller.dart';
 import '../application/resource_providers.dart';
 import '../domain/resource.dart';
@@ -19,6 +20,11 @@ class CatalogPage extends ConsumerWidget {
       appBar: AppBar(
         title: const Text('Turnos'),
         actions: [
+          IconButton(
+            tooltip: 'Mis reservas',
+            icon: const Icon(Icons.event_note),
+            onPressed: () => context.go(AppRoutes.myBookings),
+          ),
           IconButton(
             tooltip: 'Cerrar sesión',
             icon: const Icon(Icons.logout),

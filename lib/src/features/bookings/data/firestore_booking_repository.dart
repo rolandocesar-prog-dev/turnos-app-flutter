@@ -1,9 +1,13 @@
+import 'dart:developer';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 import '../../resources/domain/resource.dart';
 import '../../resources/domain/slot_calculator.dart';
+import '../domain/booking.dart';
 import '../domain/booking_failure.dart';
 import '../domain/booking_repository.dart';
+import 'booking_mapper.dart';
 
 /// Reservas en Firestore: la reserva y su franja se escriben en una transacción (design.md §3 y
 /// §10); las reglas de seguridad impiden pisar una franja ocupada (§4).
@@ -12,13 +16,55 @@ class FirestoreBookingRepository implements BookingRepository {
 
   final FirebaseFirestore _firestore;
 
+  CollectionReference<Map<String, dynamic>> get _bookings =>
+      _firestore.collection('bookings');
+
+  DocumentReference<Map<String, dynamic>> _slotRef(
+    String resourceId,
+    String slotId,
+  ) =>
+      _firestore
+          .collection('resources')
+          .doc(resourceId)
+          .collection('slots')
+          .doc(slotId);
+
+  /// Las reglas solo dejan leer las reservas propias: la consulta filtra por `uid` (design.md §4).
+  @override
+  Stream<List<Booking>> watchMine(String uid) =>
+      _bookings.where('uid', isEqualTo: uid).orderBy('startAt').snapshots().map(
+            (snapshot) => bookingsFromFirestore(
+              [for (final doc in snapshot.docs) (doc.id, doc.data())],
+              onInvalid: (error) =>
+                  log('Reserva omitida: ${error.message}', name: 'bookings'),
+            ),
+          );
+
+  /// La reserva pasa a `cancelled` y su franja se borra en un mismo lote atómico; las reglas
+  /// exigen ambas cosas y las 2 horas de anticipación (design.md §4).
+  @override
+  Future<void> cancel(Booking booking) async {
+    try {
+      await (_firestore.batch()
+            ..update(_bookings.doc(booking.id), {
+              'status': 'cancelled',
+              'cancelledAt': FieldValue.serverTimestamp(),
+            })
+            ..delete(_slotRef(booking.resourceId, booking.slotId)))
+          .commit();
+    } on FirebaseException catch (error) {
+      throw BookingFailure(
+        bookingFailureReasonFor(error.code, cancelling: true),
+      );
+    }
+  }
+
   /// Usa el índice compuesto `uid` + `startAt` (firestore.indexes.json); el estado se filtra
   /// aquí, porque las reservas futuras de una persona son pocas.
   @override
   Future<int> countActiveUpcoming(String uid, DateTime now) async {
     try {
-      final snapshot = await _firestore
-          .collection('bookings')
+      final snapshot = await _bookings
           .where('uid', isEqualTo: uid)
           .where('startAt', isGreaterThan: Timestamp.fromDate(now))
           .get();
@@ -36,12 +82,8 @@ class FirestoreBookingRepository implements BookingRepository {
     required Resource resource,
     required Slot slot,
   }) async {
-    final slotRef = _firestore
-        .collection('resources')
-        .doc(resource.id)
-        .collection('slots')
-        .doc(slot.id);
-    final bookingRef = _firestore.collection('bookings').doc();
+    final slotRef = _slotRef(resource.id, slot.id);
+    final bookingRef = _bookings.doc();
 
     final bool booked;
     try {
@@ -75,9 +117,17 @@ class FirestoreBookingRepository implements BookingRepository {
   }
 }
 
-/// Traduce el código de error de Firestore al motivo del dominio al reservar (design.md §10).
-BookingFailureReason bookingFailureReasonFor(String code) => switch (code) {
-      'permission-denied' => BookingFailureReason.slotUnavailable,
+/// Traduce el código de error de Firestore al motivo del dominio (design.md §10). Un rechazo de
+/// las reglas significa, al reservar, que la franja ya no está disponible y, al cancelar, que
+/// pasó el plazo de 2 horas.
+BookingFailureReason bookingFailureReasonFor(
+  String code, {
+  bool cancelling = false,
+}) =>
+    switch (code) {
+      'permission-denied' => cancelling
+          ? BookingFailureReason.tooLateToCancel
+          : BookingFailureReason.slotUnavailable,
       'unavailable' => BookingFailureReason.network,
       _ => BookingFailureReason.unknown,
     };

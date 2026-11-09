@@ -4,6 +4,7 @@ import 'package:turnos_app/src/features/auth/domain/app_user.dart';
 import 'package:turnos_app/src/features/auth/domain/auth_failure.dart';
 import 'package:turnos_app/src/features/auth/domain/auth_repository.dart';
 import 'package:turnos_app/src/features/auth/domain/user_profile_repository.dart';
+import 'package:turnos_app/src/features/bookings/domain/booking.dart';
 import 'package:turnos_app/src/features/bookings/domain/booking_failure.dart';
 import 'package:turnos_app/src/features/bookings/domain/booking_repository.dart';
 import 'package:turnos_app/src/features/resources/domain/resource.dart';
@@ -77,6 +78,13 @@ class FakeSlotRepository implements SlotRepository {
         {...?_taken['$resourceId/$dateKey'], slotId},
       );
 
+  /// Libera una franja, como haría una cancelación.
+  void release(String resourceId, String dateKey, String slotId) => setTaken(
+        resourceId,
+        dateKey,
+        {...?_taken['$resourceId/$dateKey']}..remove(slotId),
+      );
+
   @override
   Stream<Set<String>> watchTaken(String resourceId, String dateKey) {
     final key = '$resourceId/$dateKey';
@@ -90,26 +98,68 @@ class FakeSlotRepository implements SlotRepository {
   }
 }
 
-/// Reservas en memoria: reservar ocupa la franja en [slots], como la transacción real.
+/// Una reserva de ejemplo de [uid] que empieza en [start] y dura una hora.
+Booking testBooking(
+  String id,
+  DateTime start, {
+  String uid = 'u1',
+  Resource resource = testConsultorio,
+  BookingStatus status = BookingStatus.active,
+}) =>
+    Booking(
+      id: id,
+      resourceId: resource.id,
+      resourceName: resource.name,
+      slotId: slotId(start),
+      uid: uid,
+      startAt: start,
+      endAt: start.add(const Duration(hours: 1)),
+      status: status,
+    );
+
+/// Reservas en memoria: reservar ocupa la franja en [slots] y cancelar la libera, como la
+/// transacción real; «Mis reservas» se actualiza en vivo.
 class FakeBookingRepository implements BookingRepository {
   FakeBookingRepository(this.slots);
 
   final FakeSlotRepository slots;
+  final _bookings = <Booking>[];
+  final _changes = StreamController<void>.broadcast();
+
+  /// Reservas hechas en la prueba, como `uid:recurso/franja`.
   final booked = <String>[];
-  final _starts = <DateTime>[];
 
-  /// Reservas futuras activas que la persona ya tenía antes de la prueba.
-  int existingActive = 0;
+  /// Ids de las reservas canceladas en la prueba.
+  final cancelled = <String>[];
 
-  @override
-  Future<int> countActiveUpcoming(String uid, DateTime now) async =>
-      existingActive + _starts.where((start) => start.isAfter(now)).length;
-
-  /// Si no es `null`, la próxima reserva falla con este error.
+  /// Si no es `null`, la próxima acción falla con este error.
   BookingFailure? failWith;
 
   /// Si no es `null`, las acciones esperan este futuro antes de responder.
   Completer<void>? hold;
+
+  /// Reserva que ya existía antes de la prueba.
+  void add(Booking booking) {
+    _bookings.add(booking);
+    _changes.add(null);
+  }
+
+  List<Booking> _of(String uid) => [
+        for (final b in _bookings)
+          if (b.uid == uid) b,
+      ]..sort((a, b) => a.startAt.compareTo(b.startAt));
+
+  @override
+  Stream<List<Booking>> watchMine(String uid) => Stream.multi((listener) {
+        listener.add(_of(uid));
+        final subscription =
+            _changes.stream.listen((_) => listener.add(_of(uid)));
+        listener.onCancel = subscription.cancel;
+      });
+
+  @override
+  Future<int> countActiveUpcoming(String uid, DateTime now) async =>
+      _of(uid).where((b) => b.isUpcoming(now)).length;
 
   @override
   Future<void> book({
@@ -117,15 +167,45 @@ class FakeBookingRepository implements BookingRepository {
     required Resource resource,
     required Slot slot,
   }) async {
+    await _act();
+    booked.add('$uid:${resource.id}/${slot.id}');
+    add(
+      testBooking(
+        'b${_bookings.length + 1}',
+        slot.start,
+        uid: uid,
+        resource: resource,
+      ),
+    );
+    slots.take(resource.id, dateKey(slot.start), slot.id);
+  }
+
+  @override
+  Future<void> cancel(Booking booking) async {
+    await _act();
+    cancelled.add(booking.id);
+    final index = _bookings.indexWhere((b) => b.id == booking.id);
+    _bookings[index] = Booking(
+      id: booking.id,
+      resourceId: booking.resourceId,
+      resourceName: booking.resourceName,
+      slotId: booking.slotId,
+      uid: booking.uid,
+      startAt: booking.startAt,
+      endAt: booking.endAt,
+      status: BookingStatus.cancelled,
+    );
+    _changes.add(null);
+    slots.release(booking.resourceId, dateKey(booking.startAt), booking.slotId);
+  }
+
+  Future<void> _act() async {
     await hold?.future;
     final failure = failWith;
     if (failure != null) {
       failWith = null;
       throw failure;
     }
-    booked.add('$uid:${resource.id}/${slot.id}');
-    _starts.add(slot.start);
-    slots.take(resource.id, dateKey(slot.start), slot.id);
   }
 }
 
