@@ -24,6 +24,15 @@ void main() {
     }
   });
 
+  test(
+      'las opciones de demostración incluyen authDomain (Google en web lo exige)',
+      () {
+    final options = demoFirebaseOptions();
+
+    expect(options.projectId, demoProjectId);
+    expect(options.authDomain, '$demoProjectId.firebaseapp.com');
+  });
+
   test('por defecto se usan los emuladores con el proyecto de demostración',
       () {
     expect(firebaseEnvironment, 'emulators');

@@ -46,6 +46,12 @@ void main() {
     );
   });
 
+  test('una ventana de Google bloqueada explica qué hacer', () {
+    final reason = authFailureReasonFor('popup-blocked');
+    expect(reason, AuthFailureReason.popupBlocked);
+    expect(reason.message, contains('ventanas emergentes'));
+  });
+
   test('un código desconocido da un mensaje genérico', () {
     expect(authFailureReasonFor('algo-nuevo'), AuthFailureReason.unknown);
     expect(AuthFailureReason.unknown.message, isNotEmpty);

@@ -142,6 +142,9 @@ desactivadas, así no hace falta el SDK de administración.
   `client` (`UserProfileRepository.ensureProfile`, que no pisa un perfil existente).
 - Google: `signInWithPopup` en web; el emulador de Auth muestra su propio selector de cuentas de
   prueba. En Android e iOS hace falta el proyecto real (M4): ahí el botón no se muestra.
+  `signInWithPopup` exige `authDomain` en las opciones de Firebase, aun con los emuladores (sin él
+  falla antes de abrir la ventana); las de `demo-turnos` lo incluyen. Si el navegador bloquea la
+  ventana emergente, el mensaje dice cómo permitirla.
 - La pantalla de acceso valida antes de enviar (correo con formato, contraseña de 6 caracteres o
   más), desactiva el botón mientras espera y alterna entre «Iniciar sesión» y «Crear cuenta».
 

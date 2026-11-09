@@ -30,6 +30,12 @@ class AuthController extends AsyncNotifier<void> {
         await ref.read(userProfileRepositoryProvider).ensureProfile(user);
       });
 
+  /// Con Google, la primera vez también se crea el perfil `client` (design.md §8).
+  Future<void> signInWithGoogle() => _run(() async {
+        final user = await ref.read(authRepositoryProvider).signInWithGoogle();
+        await ref.read(userProfileRepositoryProvider).ensureProfile(user);
+      });
+
   Future<void> signOut() =>
       _run(() => ref.read(authRepositoryProvider).signOut());
 

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../application/auth_controller.dart';
+import '../application/auth_providers.dart';
 import '../domain/auth_failure.dart';
 import '../domain/credential_validators.dart';
 
@@ -48,6 +49,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
     // curso no se muestra, para no confundirlo con el resultado del intento nuevo.
     final error = action.hasError && !busy ? _messageFor(action.error) : null;
     final title = _registering ? 'Crear cuenta' : 'Inicia sesión';
+    final googleAvailable = ref.watch(googleSignInAvailableProvider);
 
     return Scaffold(
       body: SafeArea(
@@ -128,6 +130,18 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                             )
                           : Text(_registering ? 'Crear cuenta' : 'Entrar'),
                     ),
+                    if (googleAvailable) ...[
+                      const SizedBox(height: 12),
+                      OutlinedButton.icon(
+                        onPressed: busy
+                            ? null
+                            : () => ref
+                                .read(authControllerProvider.notifier)
+                                .signInWithGoogle(),
+                        icon: const Icon(Icons.account_circle_outlined),
+                        label: const Text('Continuar con Google'),
+                      ),
+                    ],
                     const SizedBox(height: 8),
                     TextButton(
                       onPressed: busy

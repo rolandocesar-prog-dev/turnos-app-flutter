@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../data/firebase_auth_repository.dart';
@@ -17,6 +18,10 @@ final authRepositoryProvider = Provider<AuthRepository>(
 final userProfileRepositoryProvider = Provider<UserProfileRepository>(
   (ref) => FirestoreUserProfileRepository(FirebaseFirestore.instance),
 );
+
+/// Google solo está disponible en web por ahora; en Android e iOS necesita el proyecto real
+/// de Firebase (M4, design.md §8). Las pruebas lo reemplazan con un override.
+final googleSignInAvailableProvider = Provider<bool>((ref) => kIsWeb);
 
 /// Sesión actual: cargando, sin usuario (`null`) o con usuario.
 final authStateProvider = StreamProvider<AppUser?>(

@@ -9,6 +9,10 @@ enum AuthFailureReason {
   tooManyRequests('Demasiados intentos. Espera un momento y vuelve a probar.'),
   network('No hay conexión. Revisa tu internet y vuelve a probar.'),
   cancelled('Se canceló el inicio de sesión.'),
+  popupBlocked(
+    'El navegador bloqueó la ventana de Google. Permite las ventanas emergentes para este '
+    'sitio y vuelve a intentarlo.',
+  ),
   unknown('No se pudo completar. Vuelve a intentarlo.');
 
   const AuthFailureReason(this.message);

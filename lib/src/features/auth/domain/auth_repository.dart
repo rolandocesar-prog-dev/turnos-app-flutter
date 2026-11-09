@@ -16,5 +16,9 @@ abstract interface class AuthRepository {
     required String password,
   });
 
+  /// Inicia sesión con Google (en web, con una ventana emergente). Solo se llama donde
+  /// `googleSignInAvailableProvider` es verdadero.
+  Future<AppUser> signInWithGoogle();
+
   Future<void> signOut();
 }

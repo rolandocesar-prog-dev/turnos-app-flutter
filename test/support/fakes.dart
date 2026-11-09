@@ -36,6 +36,11 @@ class FakeAuthRepository implements AuthRepository {
   }) =>
       _act('register:$email', email);
 
+  /// Simula la cuenta de Google elegida en la ventana emergente.
+  @override
+  Future<AppUser> signInWithGoogle() =>
+      _act('google', 'google.user@ejemplo.com');
+
   @override
   Future<void> signOut() async {
     calls.add('signOut');

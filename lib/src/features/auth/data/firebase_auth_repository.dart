@@ -40,6 +40,10 @@ class FirebaseAuthRepository implements AuthRepository {
       );
 
   @override
+  Future<AppUser> signInWithGoogle() =>
+      _guard(() => _auth.signInWithPopup(GoogleAuthProvider()));
+
+  @override
   Future<void> signOut() => _auth.signOut();
 
   Future<AppUser> _guard(Future<UserCredential> Function() action) async {
@@ -72,5 +76,6 @@ AuthFailureReason authFailureReasonFor(String code) => switch (code) {
       'popup-closed-by-user' ||
       'cancelled-popup-request' =>
         AuthFailureReason.cancelled,
+      'popup-blocked' => AuthFailureReason.popupBlocked,
       _ => AuthFailureReason.unknown,
     };

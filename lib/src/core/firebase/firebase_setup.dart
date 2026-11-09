@@ -24,7 +24,7 @@ Future<void> initializeFirebase() async {
       'Entorno de Firebase desconocido: $firebaseEnvironment (solo existe «emulators»).',
     );
   }
-  await Firebase.initializeApp(options: _demoOptions());
+  await Firebase.initializeApp(options: demoFirebaseOptions());
 
   final host = emulatorHost(
     isWeb: kIsWeb,
@@ -40,12 +40,16 @@ String emulatorHost({required bool isWeb, required TargetPlatform platform}) {
   return 'localhost';
 }
 
-FirebaseOptions _demoOptions() {
+/// Opciones del proyecto de demostración, que los emuladores aceptan.
+FirebaseOptions demoFirebaseOptions() {
   final platform = kIsWeb ? 'web' : defaultTargetPlatform.name;
   return FirebaseOptions(
     apiKey: 'demo-api-key',
     appId: '1:0:$platform:0',
     messagingSenderId: '0',
     projectId: demoProjectId,
+    // En web, el inicio de sesión con ventana emergente (Google) lo exige; con los emuladores no
+    // se contacta este dominio.
+    authDomain: '$demoProjectId.firebaseapp.com',
   );
 }

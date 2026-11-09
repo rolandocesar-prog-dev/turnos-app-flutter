@@ -21,18 +21,20 @@ void main() {
   });
   tearDown(() => auth.close());
 
-  Future<void> pumpApp(WidgetTester tester) => tester.pumpWidget(
+  Future<void> pumpApp(WidgetTester tester, {bool google = false}) =>
+      tester.pumpWidget(
         ProviderScope(
           overrides: [
             authRepositoryProvider.overrideWithValue(auth),
             userProfileRepositoryProvider.overrideWithValue(profiles),
+            googleSignInAvailableProvider.overrideWithValue(google),
           ],
           child: const TurnosApp(),
         ),
       );
 
-  Future<void> showLogin(WidgetTester tester) async {
-    await pumpApp(tester);
+  Future<void> showLogin(WidgetTester tester, {bool google = false}) async {
+    await pumpApp(tester, google: google);
     auth.emit(null);
     await tester.pumpAndSettle();
   }
@@ -176,6 +178,27 @@ void main() {
 
       auth.hold!.complete();
       await tester.pumpAndSettle();
+      expect(find.text('Reserva tu turno en segundos'), findsOneWidget);
+    });
+  });
+
+  group('Google (design.md §8)', () {
+    testWidgets('donde no está disponible, no se muestra el botón',
+        (tester) async {
+      await showLogin(tester);
+
+      expect(find.text('Continuar con Google'), findsNothing);
+    });
+
+    testWidgets('continuar con Google crea el perfil y lleva al inicio',
+        (tester) async {
+      await showLogin(tester, google: true);
+
+      await tester.tap(find.text('Continuar con Google'));
+      await tester.pumpAndSettle();
+
+      expect(auth.calls, ['google']);
+      expect(profiles.ensured.single.email, 'google.user@ejemplo.com');
       expect(find.text('Reserva tu turno en segundos'), findsOneWidget);
     });
   });

@@ -55,6 +55,24 @@ void main() {
     expect(profiles.ensured, isEmpty);
   });
 
+  test('con Google se asegura el perfil de cliente', () async {
+    await controller().signInWithGoogle();
+
+    expect(auth.calls, ['google']);
+    expect(profiles.ensured.single.email, 'google.user@ejemplo.com');
+  });
+
+  test('si se cierra la ventana de Google, queda el motivo «cancelado»',
+      () async {
+    auth.failWith = const AuthFailure(AuthFailureReason.cancelled);
+
+    await controller().signInWithGoogle();
+
+    expect(profiles.ensured, isEmpty);
+    final state = container.read(authControllerProvider);
+    expect((state.error! as AuthFailure).reason, AuthFailureReason.cancelled);
+  });
+
   test('cerrar sesión', () async {
     await controller().signOut();
 
