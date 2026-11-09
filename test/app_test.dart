@@ -7,6 +7,8 @@ import 'package:turnos_app/src/app.dart';
 import 'package:turnos_app/src/features/auth/application/auth_providers.dart';
 import 'package:turnos_app/src/features/auth/domain/app_user.dart';
 import 'package:turnos_app/src/features/auth/domain/auth_failure.dart';
+import 'package:turnos_app/src/features/bookings/application/booking_providers.dart';
+import 'package:turnos_app/src/features/bookings/domain/booking_failure.dart';
 import 'package:turnos_app/src/features/resources/application/resource_providers.dart';
 import 'package:turnos_app/src/features/resources/domain/resource.dart';
 
@@ -18,6 +20,7 @@ void main() {
   late FakeUserProfileRepository profiles;
   late FakeResourceRepository catalog;
   late FakeSlotRepository slots;
+  late FakeBookingRepository bookings;
   // Lunes 9 de noviembre de 2026, 10:10.
   final now = DateTime(2026, 11, 9, 10, 10);
 
@@ -26,6 +29,7 @@ void main() {
     profiles = FakeUserProfileRepository();
     catalog = FakeResourceRepository();
     slots = FakeSlotRepository();
+    bookings = FakeBookingRepository(slots);
   });
   tearDown(() => auth.close());
 
@@ -38,6 +42,7 @@ void main() {
             googleSignInAvailableProvider.overrideWithValue(google),
             resourceRepositoryProvider.overrideWithValue(catalog),
             slotRepositoryProvider.overrideWithValue(slots),
+            bookingRepositoryProvider.overrideWithValue(bookings),
             clockProvider.overrideWithValue(() => now),
           ],
           child: const TurnosApp(),
@@ -348,6 +353,105 @@ void main() {
       expect(slot('09:00', 'disponible'), findsOneWidget);
       expect(slot('11:30', 'disponible'), findsOneWidget);
       expect(slot('12:00', 'disponible'), findsNothing); // cierra a las 12:00
+    });
+  });
+
+  group('reservar (RF-03)', () {
+    Finder slot(String time, String status) =>
+        find.bySemanticsLabel('$time, $status');
+
+    Future<void> openConsultorio(WidgetTester tester) async {
+      await showCatalog(tester);
+      await tester.tap(find.text('Consultorio dental'));
+      await tester.pumpAndSettle();
+    }
+
+    Future<void> chooseAndConfirm(WidgetTester tester, String time) async {
+      await tester.tap(slot(time, 'disponible'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.widgetWithText(FilledButton, 'Reservar'));
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets('confirmar reserva la franja, que pasa a ocupada', (
+      tester,
+    ) async {
+      await openConsultorio(tester);
+
+      await tester.tap(slot('15:00', 'disponible'));
+      await tester.pumpAndSettle();
+      expect(find.text('¿Reservar este turno?'), findsOneWidget);
+      expect(find.text('Consultorio dental\nHoy, 15:00'), findsOneWidget);
+
+      await tester.tap(find.widgetWithText(FilledButton, 'Reservar'));
+      await tester.pumpAndSettle();
+
+      expect(bookings.booked, ['u1:consultorio/2026-11-09T15:00']);
+      expect(find.text('Turno reservado: Hoy, 15:00.'), findsOneWidget);
+      expect(slot('15:00', 'ocupada'), findsOneWidget);
+    });
+
+    testWidgets('volver del diálogo no reserva', (tester) async {
+      await openConsultorio(tester);
+
+      await tester.tap(slot('15:00', 'disponible'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Volver'));
+      await tester.pumpAndSettle();
+
+      expect(bookings.booked, isEmpty);
+      expect(slot('15:00', 'disponible'), findsOneWidget);
+    });
+
+    testWidgets('si otra persona la ocupó antes, lo avisa', (tester) async {
+      await openConsultorio(tester);
+      bookings.failWith = const BookingFailure(BookingFailureReason.slotTaken);
+
+      await chooseAndConfirm(tester, '15:00');
+
+      expect(
+        find.text('Ese horario acaba de ocuparse. Elige otro.'),
+        findsOneWidget,
+      );
+      expect(bookings.booked, isEmpty);
+    });
+
+    testWidgets('las ocupadas y las pasadas no se pueden tocar', (
+      tester,
+    ) async {
+      slots.setTaken('consultorio', '2026-11-09', {'2026-11-09T11:00'});
+      await openConsultorio(tester);
+
+      await tester.tap(slot('11:00', 'ocupada'));
+      await tester.tap(slot('09:00', 'ya pasó'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('¿Reservar este turno?'), findsNothing);
+      final semantics = tester.getSemantics(slot('11:00', 'ocupada'));
+      expect(semantics.flagsCollection.isButton, isFalse);
+      expect(
+        tester
+            .getSemantics(slot('15:00', 'disponible'))
+            .flagsCollection
+            .isButton,
+        isTrue,
+      );
+    });
+
+    testWidgets('mientras reserva, no se puede tocar otra franja', (
+      tester,
+    ) async {
+      await openConsultorio(tester);
+      bookings.hold = Completer<void>();
+
+      await chooseAndConfirm(tester, '15:00');
+      await tester.tap(slot('16:00', 'disponible'));
+      await tester.pumpAndSettle();
+      expect(find.text('¿Reservar este turno?'), findsNothing);
+
+      bookings.hold!.complete();
+      await tester.pumpAndSettle();
+      expect(bookings.booked, ['u1:consultorio/2026-11-09T15:00']);
     });
   });
 }

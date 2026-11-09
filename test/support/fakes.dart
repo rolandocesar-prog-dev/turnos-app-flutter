@@ -4,8 +4,11 @@ import 'package:turnos_app/src/features/auth/domain/app_user.dart';
 import 'package:turnos_app/src/features/auth/domain/auth_failure.dart';
 import 'package:turnos_app/src/features/auth/domain/auth_repository.dart';
 import 'package:turnos_app/src/features/auth/domain/user_profile_repository.dart';
+import 'package:turnos_app/src/features/bookings/domain/booking_failure.dart';
+import 'package:turnos_app/src/features/bookings/domain/booking_repository.dart';
 import 'package:turnos_app/src/features/resources/domain/resource.dart';
 import 'package:turnos_app/src/features/resources/domain/resource_repository.dart';
+import 'package:turnos_app/src/features/resources/domain/slot_calculator.dart';
 import 'package:turnos_app/src/features/resources/domain/slot_repository.dart';
 
 /// Recursos de ejemplo para las pruebas.
@@ -67,6 +70,13 @@ class FakeSlotRepository implements SlotRepository {
     _controllers[key]?.add(ids);
   }
 
+  /// Marca ocupada una franja más, como haría una reserva.
+  void take(String resourceId, String dateKey, String slotId) => setTaken(
+        resourceId,
+        dateKey,
+        {...?_taken['$resourceId/$dateKey'], slotId},
+      );
+
   @override
   Stream<Set<String>> watchTaken(String resourceId, String dateKey) {
     final key = '$resourceId/$dateKey';
@@ -77,6 +87,36 @@ class FakeSlotRepository implements SlotRepository {
       final subscription = controller.stream.listen(listener.add);
       listener.onCancel = subscription.cancel;
     });
+  }
+}
+
+/// Reservas en memoria: reservar ocupa la franja en [slots], como la transacción real.
+class FakeBookingRepository implements BookingRepository {
+  FakeBookingRepository(this.slots);
+
+  final FakeSlotRepository slots;
+  final booked = <String>[];
+
+  /// Si no es `null`, la próxima reserva falla con este error.
+  BookingFailure? failWith;
+
+  /// Si no es `null`, las acciones esperan este futuro antes de responder.
+  Completer<void>? hold;
+
+  @override
+  Future<void> book({
+    required String uid,
+    required Resource resource,
+    required Slot slot,
+  }) async {
+    await hold?.future;
+    final failure = failWith;
+    if (failure != null) {
+      failWith = null;
+      throw failure;
+    }
+    booked.add('$uid:${resource.id}/${slot.id}');
+    slots.take(resource.id, dateKey(slot.start), slot.id);
   }
 }
 

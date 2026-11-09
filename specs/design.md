@@ -218,9 +218,16 @@ desactivadas, así no hace falta el SDK de administración.
   las anteriores (pasadas o canceladas), sin acciones. Escucha en tiempo real las reservas del
   usuario. En el proyecto real, la consulta por `uid` y `startAt` necesitará un índice compuesto,
   declarado en `firestore.indexes.json`.
-- **Errores**: `BookingFailure` con mensajes en español (franja ocupada, límite alcanzado, franja
-  pasada, fuera de plazo para cancelar, sin conexión, desconocido); un rechazo de las reglas
-  (`permission-denied`) se traduce al motivo correspondiente según la acción.
+- **Errores**: `BookingFailure` con mensajes en español (franja ocupada, franja no disponible,
+  límite alcanzado, franja pasada, fuera de plazo para cancelar, sin conexión, desconocido); un
+  rechazo de las reglas (`permission-denied`) se traduce según la acción: al reservar, «Ese horario
+  ya no está disponible» (franja pasada según el servidor, recurso desactivado); al cancelar, el
+  plazo de 2 horas.
+- La transacción **devuelve** si reservó en lugar de lanzar el error desde adentro, para que el
+  aviso de franja ocupada llegue igual en todas las plataformas.
+- **Interfaz**: una franja disponible es un botón («Reservar a las 15:00»); al tocarla, un diálogo
+  pide confirmar con el recurso, el día y la hora, y un aviso informa el resultado. Mientras se
+  reserva, las demás franjas no se pueden tocar.
 - **Prueba de integración** (reservar → cancelar): con `integration_test` sobre la app real en
   Chrome (`flutter drive`), contra los emuladores con datos de ejemplo. Recorre iniciar sesión,
   reservar una franja, verla en «Mis reservas», cancelarla y comprobar que vuelve a estar
