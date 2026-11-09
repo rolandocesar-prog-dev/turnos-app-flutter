@@ -28,7 +28,7 @@ Cada tarea referencia su requisito. Marca `[x]` al terminar y haz un commit por 
       M4).
 - [x] Datos de ejemplo para el emulador; listado de recursos y detalle.
 - [x] Cálculo de franjas desde el horario semanal (dominio, con pruebas unitarias).
-- [ ] Vista de franjas por fecha en tiempo real.
+- [x] Vista de franjas por fecha en tiempo real.
 
 ## M3 · Reservas (RF-03, RF-04)
 

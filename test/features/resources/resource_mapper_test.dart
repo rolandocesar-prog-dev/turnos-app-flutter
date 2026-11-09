@@ -50,6 +50,36 @@ void main() {
     expect(resource.description, isEmpty);
   });
 
+  test(
+      'en el catálogo, un documento roto se omite y se informa; el resto se muestra',
+      () {
+    final errors = <FormatException>[];
+    final broken = {
+      'name': 'Cancha 1',
+      'active': true,
+    }; // sin duración ni horario
+
+    final resources = resourcesFromFirestore(
+      [('consultorio', valid()), ('cancha-1', broken)],
+      onInvalid: errors.add,
+    );
+
+    expect(resources.map((r) => r.id), ['consultorio']);
+    expect(errors.single.message, contains('resources/cancha-1'));
+  });
+
+  test('el catálogo queda ordenado por nombre', () {
+    final resources = resourcesFromFirestore(
+      [
+        ('z', valid()..['name'] = 'Zumba'),
+        ('a', valid()..['name'] = 'Atletismo'),
+      ],
+      onInvalid: (_) => fail('no debería haber documentos inválidos'),
+    );
+
+    expect(resources.map((r) => r.name), ['Atletismo', 'Zumba']);
+  });
+
   group('un documento mal formado falla con un mensaje claro', () {
     final cases = <String, void Function(Map<String, dynamic>)>{
       'sin nombre': (d) => d.remove('name'),

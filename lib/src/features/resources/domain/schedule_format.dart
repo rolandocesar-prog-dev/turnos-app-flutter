@@ -12,6 +12,28 @@ abstract final class ScheduleFormat {
     DateTime.sunday: 'Domingo',
   };
 
+  static const _shortWeekdays = {
+    DateTime.monday: 'lun',
+    DateTime.tuesday: 'mar',
+    DateTime.wednesday: 'mié',
+    DateTime.thursday: 'jue',
+    DateTime.friday: 'vie',
+    DateTime.saturday: 'sáb',
+    DateTime.sunday: 'dom',
+  };
+
+  /// «Hoy», «Mañana» o «mié 11» para el selector de días.
+  static String dayLabel(DateTime day, DateTime today) {
+    final days = DateTime(day.year, day.month, day.day)
+        .difference(DateTime(today.year, today.month, today.day))
+        .inDays;
+    return switch (days) {
+      0 => 'Hoy',
+      1 => 'Mañana',
+      _ => '${_shortWeekdays[day.weekday]} ${day.day}',
+    };
+  }
+
   /// Minutos desde la medianoche como «HH:mm».
   static String time(int minutes) =>
       '${(minutes ~/ 60).toString().padLeft(2, '0')}:${(minutes % 60).toString().padLeft(2, '0')}';

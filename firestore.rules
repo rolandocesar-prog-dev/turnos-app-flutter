@@ -34,7 +34,12 @@ service cloud.firestore {
     match /resources/{resourceId} {
       allow read: if signedIn();
       allow write: if isAdmin();
-      // Las franjas (slots) y las reservas llegan con sus reglas en M3.
+
+      // Ocupación de franjas: se lee para mostrar el estado (RF-02). Solo datos opacos.
+      // Crear y borrar franjas (reservar y cancelar) llega con sus reglas en M3.
+      match /slots/{slotId} {
+        allow read: if signedIn();
+      }
     }
   }
 }

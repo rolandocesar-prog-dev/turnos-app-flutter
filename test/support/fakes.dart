@@ -6,6 +6,7 @@ import 'package:turnos_app/src/features/auth/domain/auth_repository.dart';
 import 'package:turnos_app/src/features/auth/domain/user_profile_repository.dart';
 import 'package:turnos_app/src/features/resources/domain/resource.dart';
 import 'package:turnos_app/src/features/resources/domain/resource_repository.dart';
+import 'package:turnos_app/src/features/resources/domain/slot_repository.dart';
 
 /// Recursos de ejemplo para las pruebas.
 const testCancha = Resource(
@@ -39,15 +40,44 @@ class FakeResourceRepository implements ResourceRepository {
 
   List<Resource> resources;
 
+  /// Si no es `null`, el catálogo falla con este error (p. ej. permiso denegado).
+  Object? failWith;
+
   @override
-  Stream<List<Resource>> watchActive() => Stream.value([
-        for (final r in resources)
-          if (r.active) r,
-      ]);
+  Stream<List<Resource>> watchActive() => failWith != null
+      ? Stream.error(failWith!)
+      : Stream.value([
+          for (final r in resources)
+            if (r.active) r,
+        ]);
 
   @override
   Stream<Resource?> watch(String id) =>
       Stream.value(resources.where((r) => r.id == id).firstOrNull);
+}
+
+/// Ocupación de franjas controlada por la prueba: [setTaken] la cambia «en vivo».
+class FakeSlotRepository implements SlotRepository {
+  final _taken = <String, Set<String>>{};
+  final _controllers = <String, StreamController<Set<String>>>{};
+
+  void setTaken(String resourceId, String dateKey, Set<String> ids) {
+    final key = '$resourceId/$dateKey';
+    _taken[key] = ids;
+    _controllers[key]?.add(ids);
+  }
+
+  @override
+  Stream<Set<String>> watchTaken(String resourceId, String dateKey) {
+    final key = '$resourceId/$dateKey';
+    final controller =
+        _controllers.putIfAbsent(key, StreamController<Set<String>>.broadcast);
+    return Stream.multi((listener) {
+      listener.add(_taken[key] ?? const {});
+      final subscription = controller.stream.listen(listener.add);
+      listener.onCancel = subscription.cancel;
+    });
+  }
 }
 
 /// Sesión controlada por la prueba, sin Firebase (design.md §6). Iniciar sesión o registrarse

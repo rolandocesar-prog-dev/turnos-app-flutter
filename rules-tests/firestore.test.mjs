@@ -110,6 +110,31 @@ describe('resources/{id}', () => {
   });
 });
 
+describe('resources/{id}/slots/{slotId}', () => {
+  const slot = (db) => doc(db, 'resources', 'cancha-1', 'slots', '2026-11-10T18:00');
+
+  beforeEach(async () => {
+    await env.withSecurityRulesDisabled(async (context) => {
+      await setDoc(slot(context.firestore()), { bookingId: 'b1', uid: LUIS.uid });
+    });
+  });
+
+  test('cualquier usuario con sesión ve qué franjas están ocupadas', async () => {
+    await assertSucceeds(getDoc(slot(as(ANA))));
+  });
+
+  test('sin sesión no se ven', async () => {
+    await assertFails(getDoc(slot(anonymous())));
+  });
+
+  test('todavía nadie crea ni borra franjas (reservar llega en M3)', async () => {
+    const libre = doc(as(ANA), 'resources', 'cancha-1', 'slots', '2026-11-10T19:00');
+    await assertFails(setDoc(libre, { bookingId: 'b2', uid: ANA.uid }));
+    await assertFails(deleteDoc(slot(as(LUIS))));
+    await assertFails(deleteDoc(slot(as(ADMIN))));
+  });
+});
+
 describe('cualquier otra colección', () => {
   test('está cerrada', async () => {
     await assertFails(getDoc(doc(as(ADMIN), 'bookings', 'b1')));

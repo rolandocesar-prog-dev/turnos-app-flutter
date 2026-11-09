@@ -17,11 +17,15 @@ void main() {
   late FakeAuthRepository auth;
   late FakeUserProfileRepository profiles;
   late FakeResourceRepository catalog;
+  late FakeSlotRepository slots;
+  // Lunes 9 de noviembre de 2026, 10:10.
+  final now = DateTime(2026, 11, 9, 10, 10);
 
   setUp(() {
     auth = FakeAuthRepository();
     profiles = FakeUserProfileRepository();
     catalog = FakeResourceRepository();
+    slots = FakeSlotRepository();
   });
   tearDown(() => auth.close());
 
@@ -33,6 +37,8 @@ void main() {
             userProfileRepositoryProvider.overrideWithValue(profiles),
             googleSignInAvailableProvider.overrideWithValue(google),
             resourceRepositoryProvider.overrideWithValue(catalog),
+            slotRepositoryProvider.overrideWithValue(slots),
+            clockProvider.overrideWithValue(() => now),
           ],
           child: const TurnosApp(),
         ),
@@ -243,6 +249,19 @@ void main() {
       expect(find.text('Sala de ensayo'), findsNothing);
     });
 
+    testWidgets('si el catálogo no se puede leer, lo dice (no queda cargando)',
+        (
+      tester,
+    ) async {
+      catalog.failWith = Exception('permission-denied');
+      await showCatalog(tester);
+
+      expect(
+        find.text('No se pudo cargar el catálogo. Revisa tu conexión.'),
+        findsOneWidget,
+      );
+    });
+
     testWidgets('sin recursos muestra un aviso', (tester) async {
       catalog.resources = [];
       await showCatalog(tester);
@@ -255,6 +274,10 @@ void main() {
 
     testWidgets('el detalle muestra el horario semanal y vuelve al catálogo',
         (tester) async {
+      // Pantalla alta: la lista solo construye lo visible y el horario va después de las franjas.
+      tester.view.physicalSize = const Size(800, 1600);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
       await showCatalog(tester);
 
       await tester.tap(find.text('Consultorio dental'));
@@ -271,6 +294,60 @@ void main() {
       await tester.tap(find.byType(BackButton));
       await tester.pumpAndSettle();
       expect(find.text('Reserva tu turno en segundos'), findsOneWidget);
+    });
+  });
+
+  group('franjas por fecha (RF-02)', () {
+    Finder slot(String time, String status) =>
+        find.bySemanticsLabel('$time, $status');
+
+    // El estado de cada franja se lee por su etiqueta de accesibilidad, como un lector de pantalla.
+    Future<void> openConsultorio(WidgetTester tester) async {
+      await showCatalog(tester);
+      await tester.tap(find.text('Consultorio dental'));
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets('hoy marca las pasadas, las ocupadas y las disponibles', (
+      tester,
+    ) async {
+      slots.setTaken('consultorio', '2026-11-09', {'2026-11-09T11:00'});
+      await openConsultorio(tester);
+
+      expect(find.text('Hoy'), findsOneWidget);
+      expect(slot('09:00', 'ya pasó'), findsOneWidget);
+      expect(slot('10:00', 'ya pasó'), findsOneWidget); // empezó a las 10:00
+      expect(slot('10:30', 'disponible'), findsOneWidget);
+      expect(slot('11:00', 'ocupada'), findsOneWidget);
+      expect(slot('18:30', 'disponible'), findsOneWidget);
+    });
+
+    testWidgets('una reserva nueva se ve al instante, sin recargar', (
+      tester,
+    ) async {
+      await openConsultorio(tester);
+      expect(slot('15:00', 'disponible'), findsOneWidget);
+
+      slots.setTaken('consultorio', '2026-11-09', {'2026-11-09T15:00'});
+      await tester.pumpAndSettle();
+
+      expect(slot('15:00', 'ocupada'), findsOneWidget);
+    });
+
+    testWidgets('cambiar de día muestra sus franjas, o que está cerrado', (
+      tester,
+    ) async {
+      await openConsultorio(tester);
+
+      await tester.tap(find.text('Mañana')); // martes: cerrado
+      await tester.pumpAndSettle();
+      expect(find.text('Cerrado este día.'), findsOneWidget);
+
+      await tester.tap(find.text('sáb 14'));
+      await tester.pumpAndSettle();
+      expect(slot('09:00', 'disponible'), findsOneWidget);
+      expect(slot('11:30', 'disponible'), findsOneWidget);
+      expect(slot('12:00', 'disponible'), findsNothing); // cierra a las 12:00
     });
   });
 }

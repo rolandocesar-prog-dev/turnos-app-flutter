@@ -1,3 +1,5 @@
+import 'dart:developer';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 import '../domain/resource.dart';
@@ -16,12 +18,15 @@ class FirestoreResourceRepository implements ResourceRepository {
   @override
   Stream<List<Resource>> watchActive() =>
       _resources.where('active', isEqualTo: true).snapshots().map(
-            (snapshot) => [
-              for (final doc in snapshot.docs)
-                resourceFromFirestore(doc.id, doc.data()),
-            ]..sort((a, b) => a.name.compareTo(b.name)),
+            (snapshot) => resourcesFromFirestore(
+              [for (final doc in snapshot.docs) (doc.id, doc.data())],
+              // Un recurso mal cargado se omite del catálogo y queda registrado.
+              onInvalid: (error) =>
+                  log('Recurso omitido: ${error.message}', name: 'resources'),
+            ),
           );
 
+  /// En el detalle, un documento mal formado sí es un error: la pantalla lo informa.
   @override
   Stream<Resource?> watch(String id) =>
       _resources.doc(id).snapshots().map((doc) {

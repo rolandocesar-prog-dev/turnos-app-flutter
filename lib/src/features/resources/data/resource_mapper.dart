@@ -11,6 +11,23 @@ const weekdayKeys = {
   'sun': DateTime.sunday,
 };
 
+/// Convierte los documentos del catálogo omitiendo los mal formados: uno roto no deja a todos sin
+/// catálogo. Cada omitido se informa a [onInvalid] (design.md §9).
+List<Resource> resourcesFromFirestore(
+  Iterable<(String, Map<String, dynamic>)> docs, {
+  required void Function(FormatException error) onInvalid,
+}) {
+  final resources = <Resource>[];
+  for (final (id, data) in docs) {
+    try {
+      resources.add(resourceFromFirestore(id, data));
+    } on FormatException catch (error) {
+      onInvalid(error);
+    }
+  }
+  return resources..sort((a, b) => a.name.compareTo(b.name));
+}
+
 /// Convierte `resources/{id}` en un [Resource]. Es estricto: un documento mal formado lanza
 /// `FormatException` con el campo que falla, en lugar de mostrar datos inventados.
 Resource resourceFromFirestore(String id, Map<String, dynamic> data) {

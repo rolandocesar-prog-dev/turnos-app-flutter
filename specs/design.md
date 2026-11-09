@@ -80,6 +80,9 @@ falla y la app muestra "Ese horario acaba de ocuparse".
   `email`. No se borra desde la app. Los administradores se asignan fuera de la app.
 - `resources` (M2): lectura para usuarios autenticados; escritura solo para quien tiene
   `role == "admin"` en su `users/{uid}`.
+- `resources/{id}/slots` (M2): **lectura** para usuarios autenticados, para mostrar qué franjas
+  están ocupadas (RF-02). Como cualquiera con sesión las lee, un slot guarda solo datos opacos
+  (`bookingId`, `uid`, `createdAt`), nunca nombre ni correo. La escritura sigue cerrada hasta M3.
 - La creación de `slots` exige que no exista y que `uid == request.auth.uid` (M3).
 - Todo lo demás está cerrado.
 - Las reglas se prueban con el emulador de Firestore y `@firebase/rules-unit-testing`, con el
@@ -159,4 +162,21 @@ desactivadas, así no hace falta el SDK de administración.
   negocio se modela cuando haga falta (M4, recordatorios).
 - **Estado en tiempo real**: la vista escucha `resources/{id}/slots` del día (consulta por rango de
   id) y marca cada franja como *ocupada* si tiene documento. Las franjas pasadas se muestran como
-  no disponibles (el bloqueo al reservar es de M3).
+  no disponibles (el bloqueo al reservar es de M3). El estado de cada franja (`disponible`,
+  `ocupada`, `pasada`) lo decide una función pura con la hora actual de un provider de reloj,
+  que las pruebas fijan.
+- La vista ofrece los próximos 7 días («Hoy», «Mañana», «mié 11»…). Cada franja muestra la hora
+  y su estado con texto e ícono, no solo con color (RNF-03); reservar llega en M3.
+- `npm run seed` agrega dos franjas ocupadas de mañana en la cancha, para ver el estado en la
+  demo.
+- **Robustez** (hallada al probar contra el emulador con un recurso mal cargado):
+  - En el catálogo, un documento mal formado **se omite y se registra**; los demás se muestran.
+    En el detalle de ese recurso sí se informa el error.
+  - Los `StreamProvider` de Firestore usan `retry: noRetry`. El reintento automático de Riverpod
+    3 reintenta las `Exception` y, mientras tanto, el estado vuelve a «cargando»: en la app real
+    el catálogo quedaba cargando para siempre en lugar de mostrar el error. Firestore ya maneja la
+    reconexión por su cuenta.
+- Cada franja es un nodo de accesibilidad propio («09:00, disponible»), para que un lector de
+  pantalla la anuncie por separado.
+- Las pruebas de reglas no deben correr contra el emulador de desarrollo: dejan datos de prueba.
+  Se corren con `npm run test:rules`, que levanta su propio emulador.

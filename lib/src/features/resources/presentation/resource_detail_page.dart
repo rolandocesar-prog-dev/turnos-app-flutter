@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../application/resource_providers.dart';
 import '../domain/resource.dart';
 import '../domain/schedule_format.dart';
+import 'slots_section.dart';
 
 /// Detalle de un recurso: descripción, duración del turno y horario semanal (RF-02).
 class ResourceDetailPage extends ConsumerWidget {
@@ -48,6 +49,8 @@ class _Detail extends StatelessWidget {
           ScheduleFormat.slotDuration(resource.slotMinutes),
           style: textTheme.labelLarge,
         ),
+        const SizedBox(height: 24),
+        SlotsSection(resource: resource),
         const SizedBox(height: 24),
         Text('Horario', style: textTheme.titleMedium),
         const SizedBox(height: 8),

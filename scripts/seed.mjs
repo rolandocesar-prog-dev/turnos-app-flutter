@@ -44,11 +44,29 @@ const env = await initializeTestEnvironment({
   projectId: 'demo-turnos',
   firestore: { host: '127.0.0.1', port: 8080 },
 });
+// Dos franjas ocupadas mañana en la cancha, para ver el estado en la demo. Solo datos opacos
+// (design.md §4): id de reserva, uid y fecha.
+const tomorrow = new Date();
+tomorrow.setDate(tomorrow.getDate() + 1);
+const pad = (n) => String(n).padStart(2, '0');
+const day = `${tomorrow.getFullYear()}-${pad(tomorrow.getMonth() + 1)}-${pad(tomorrow.getDate())}`;
+const takenSlots = [`${day}T18:00`, `${day}T19:00`];
+
 await env.withSecurityRulesDisabled(async (context) => {
   const db = context.firestore();
   for (const [id, data] of Object.entries(resources)) {
     await setDoc(doc(db, 'resources', id), data);
   }
+  for (const slotId of takenSlots) {
+    await setDoc(doc(db, 'resources', 'cancha-futbol-5', 'slots', slotId), {
+      bookingId: `ejemplo-${slotId}`,
+      uid: 'usuario-de-ejemplo',
+      createdAt: new Date(),
+    });
+  }
 });
 await env.cleanup();
-console.log(`Cargados ${Object.keys(resources).length} recursos en demo-turnos.`);
+console.log(
+  `Cargados ${Object.keys(resources).length} recursos y ${takenSlots.length} franjas ocupadas ` +
+    `(${takenSlots.join(', ')}) en demo-turnos.`,
+);
