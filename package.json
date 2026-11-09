@@ -4,6 +4,7 @@
   "description": "Herramientas de Firebase para la app de turnos (emuladores; design.md §6).",
   "scripts": {
     "emulators": "firebase emulators:start --project demo-turnos",
+    "seed": "node scripts/seed.mjs",
     "test:rules": "firebase emulators:exec --only firestore --project demo-turnos \"node --test rules-tests/*.test.mjs\""
   },
   "devDependencies": {

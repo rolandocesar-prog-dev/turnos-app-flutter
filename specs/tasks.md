@@ -26,7 +26,7 @@ Cada tarea referencia su requisito. Marca `[x]` al terminar y haz un commit por 
 - [x] Registro e inicio de sesión con correo; perfil con rol `client`.
 - [x] Inicio de sesión con Google (web contra el emulador; en móvil necesita el proyecto real,
       M4).
-- [ ] Datos de ejemplo para el emulador; listado de recursos y detalle.
+- [x] Datos de ejemplo para el emulador; listado de recursos y detalle.
 - [ ] Cálculo de franjas desde el horario semanal (dominio, con pruebas unitarias).
 - [ ] Vista de franjas por fecha en tiempo real.
 

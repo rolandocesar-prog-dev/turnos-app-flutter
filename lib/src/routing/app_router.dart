@@ -6,7 +6,8 @@ import '../core/presentation/loading_page.dart';
 import '../features/auth/application/auth_providers.dart';
 import '../features/auth/domain/app_user.dart';
 import '../features/auth/presentation/login_page.dart';
-import '../features/home/presentation/home_page.dart';
+import '../features/resources/presentation/catalog_page.dart';
+import '../features/resources/presentation/resource_detail_page.dart';
 import 'session_redirect.dart';
 
 /// Router de la app: se vuelve a evaluar cada vez que cambia la sesión (design.md §7).
@@ -26,7 +27,15 @@ final routerProvider = Provider<GoRouter>((ref) {
     routes: [
       GoRoute(
         path: AppRoutes.home,
-        builder: (context, state) => const HomePage(),
+        builder: (context, state) => const CatalogPage(),
+        routes: [
+          // Anidada en el inicio: la barra muestra el botón para volver al catálogo.
+          GoRoute(
+            path: 'recursos/:id',
+            builder: (context, state) =>
+                ResourceDetailPage(resourceId: state.pathParameters['id']!),
+          ),
+        ],
       ),
       GoRoute(
         path: AppRoutes.login,

@@ -7,6 +7,8 @@ import 'package:turnos_app/src/app.dart';
 import 'package:turnos_app/src/features/auth/application/auth_providers.dart';
 import 'package:turnos_app/src/features/auth/domain/app_user.dart';
 import 'package:turnos_app/src/features/auth/domain/auth_failure.dart';
+import 'package:turnos_app/src/features/resources/application/resource_providers.dart';
+import 'package:turnos_app/src/features/resources/domain/resource.dart';
 
 import 'support/fakes.dart';
 
@@ -14,10 +16,12 @@ void main() {
   const user = AppUser(uid: 'u1', email: 'ana@ejemplo.com');
   late FakeAuthRepository auth;
   late FakeUserProfileRepository profiles;
+  late FakeResourceRepository catalog;
 
   setUp(() {
     auth = FakeAuthRepository();
     profiles = FakeUserProfileRepository();
+    catalog = FakeResourceRepository();
   });
   tearDown(() => auth.close());
 
@@ -28,10 +32,17 @@ void main() {
             authRepositoryProvider.overrideWithValue(auth),
             userProfileRepositoryProvider.overrideWithValue(profiles),
             googleSignInAvailableProvider.overrideWithValue(google),
+            resourceRepositoryProvider.overrideWithValue(catalog),
           ],
           child: const TurnosApp(),
         ),
       );
+
+  Future<void> showCatalog(WidgetTester tester) async {
+    await pumpApp(tester);
+    auth.emit(user);
+    await tester.pumpAndSettle();
+  }
 
   Future<void> showLogin(WidgetTester tester, {bool google = false}) async {
     await pumpApp(tester, google: google);
@@ -199,6 +210,66 @@ void main() {
 
       expect(auth.calls, ['google']);
       expect(profiles.ensured.single.email, 'google.user@ejemplo.com');
+      expect(find.text('Reserva tu turno en segundos'), findsOneWidget);
+    });
+  });
+
+  group('catálogo (RF-02)', () {
+    testWidgets('lista los recursos activos con su duración de turno',
+        (tester) async {
+      await showCatalog(tester);
+
+      expect(find.text('Cancha de fútbol 5'), findsOneWidget);
+      expect(find.text('Consultorio dental'), findsOneWidget);
+      expect(find.textContaining('Turnos de 1 h'), findsOneWidget);
+      expect(find.textContaining('Turnos de 30 min'), findsOneWidget);
+    });
+
+    testWidgets('no muestra los inactivos', (tester) async {
+      catalog.resources = [
+        testCancha,
+        const Resource(
+          id: 'sala',
+          name: 'Sala de ensayo',
+          description: 'En remodelación.',
+          slotMinutes: 120,
+          active: false,
+          weeklySchedule: {},
+        ),
+      ];
+      await showCatalog(tester);
+
+      expect(find.text('Cancha de fútbol 5'), findsOneWidget);
+      expect(find.text('Sala de ensayo'), findsNothing);
+    });
+
+    testWidgets('sin recursos muestra un aviso', (tester) async {
+      catalog.resources = [];
+      await showCatalog(tester);
+
+      expect(
+        find.text('Todavía no hay lugares para reservar.'),
+        findsOneWidget,
+      );
+    });
+
+    testWidgets('el detalle muestra el horario semanal y vuelve al catálogo',
+        (tester) async {
+      await showCatalog(tester);
+
+      await tester.tap(find.text('Consultorio dental'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Horario'), findsOneWidget);
+      expect(find.text('09:00–13:00, 15:00–19:00'), findsOneWidget); // lunes
+      expect(find.text('09:00–12:00'), findsOneWidget); // sábado
+      expect(
+        find.text('Cerrado'),
+        findsNWidgets(5),
+      ); // martes a viernes y domingo
+
+      await tester.tap(find.byType(BackButton));
+      await tester.pumpAndSettle();
       expect(find.text('Reserva tu turno en segundos'), findsOneWidget);
     });
   });
