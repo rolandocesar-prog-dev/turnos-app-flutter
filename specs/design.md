@@ -75,9 +75,22 @@ falla y la app muestra "Ese horario acaba de ocuparse".
 ## 4. Reglas de seguridad (RNF-01)
 
 - Un cliente solo lee y escribe su `users/{uid}` y sus `bookings`.
-- `resources` es de lectura pública para usuarios autenticados y de escritura solo para `admin`.
-- La creación de `slots` exige que no exista y que `uid == request.auth.uid`.
-- Las reglas se prueban con el emulador de Firebase y `@firebase/rules-unit-testing` en CI.
+- `users/{uid}` (M2): solo su dueño lo lee. Al crearlo, el rol **debe** ser `client` (nadie se
+  da `admin` a sí mismo) y el correo, el de su sesión. Al actualizarlo no puede cambiar `role` ni
+  `email`. No se borra desde la app. Los administradores se asignan fuera de la app.
+- `resources` (M2): lectura para usuarios autenticados; escritura solo para quien tiene
+  `role == "admin"` en su `users/{uid}`.
+- La creación de `slots` exige que no exista y que `uid == request.auth.uid` (M3).
+- Todo lo demás está cerrado.
+- Las reglas se prueban con el emulador de Firestore y `@firebase/rules-unit-testing`, con el
+  ejecutor de pruebas de Node (`node --test`, sin más dependencias): `npm run test:rules` levanta
+  el emulador, corre `rules-tests/` y lo apaga. El CI lo ejecuta en un trabajo propio.
+
+### Datos de ejemplo
+
+`npm run seed` carga recursos de ejemplo (una cancha y un consultorio, con horario semanal y un
+día bloqueado) en el emulador en marcha. Usa `@firebase/rules-unit-testing` con las reglas
+desactivadas, así no hace falta el SDK de administración.
 
 ## 5. Estrategia de pruebas
 
@@ -116,3 +129,31 @@ falla y la app muestra "Ese horario acaba de ocuparse".
   pantalla de espera, para no mandar al login a quien ya inició sesión.
 - Rutas de M1: `/` (inicio, protegida) y `/login` (pública). Las pantallas de acceso reales llegan
   en M2.
+
+## 8. Autenticación (RF-01, M2)
+
+- `AuthRepository` suma `signInWithEmail`, `registerWithEmail`, `signInWithGoogle` y `signOut`.
+  Los errores de Firebase se traducen a `AuthFailure` del dominio, con mensajes en español:
+  **usuario inexistente, contraseña incorrecta y credencial inválida dan el mismo mensaje**
+  («Correo o contraseña incorrectos»), para no revelar si el correo existe. Hay mensajes propios
+  para correo ya registrado, contraseña débil, correo mal escrito, demasiados intentos y falta de
+  conexión.
+- Al registrarse, y la primera vez que alguien entra con Google, se crea `users/{uid}` con rol
+  `client` (`UserProfileRepository.ensureProfile`, que no pisa un perfil existente).
+- Google: `signInWithPopup` en web; el emulador de Auth muestra su propio selector de cuentas de
+  prueba. En Android e iOS hace falta el proyecto real (M4): ahí el botón no se muestra.
+- La pantalla de acceso valida antes de enviar (correo con formato, contraseña de 6 caracteres o
+  más), desactiva el botón mientras espera y alterna entre «Iniciar sesión» y «Crear cuenta».
+
+## 9. Catálogo y franjas (RF-02, M2)
+
+- `Resource` (dominio) refleja `resources/{id}`; el catálogo muestra solo los `active`.
+- **Cálculo de franjas** (`domain/slot_calculator.dart`, función pura): para un recurso y una
+  fecha, recorre los intervalos del horario semanal de ese día y los corta en franjas de
+  `slotMinutes`; una franja que no entra completa al final del intervalo se descarta. Un día de
+  `blockedDates` no tiene franjas. Cada franja tiene id determinista `yyyy-MM-ddTHH:mm` (§3).
+- Las horas son las **locales del negocio**, sin zona horaria (`DateTime` local); la zona del
+  negocio se modela cuando haga falta (M4, recordatorios).
+- **Estado en tiempo real**: la vista escucha `resources/{id}/slots` del día (consulta por rango de
+  id) y marca cada franja como *ocupada* si tiene documento. Las franjas pasadas se muestran como
+  no disponibles (el bloqueo al reservar es de M3).

@@ -21,16 +21,19 @@ Cada tarea referencia su requisito. Marca `[x]` al terminar y haz un commit por 
 
 ## M2 · Autenticación y catálogo (RF-01, RF-02)
 
+- [ ] Reglas de Firestore para `users` y `resources`, con pruebas en el emulador y en el CI
+      (RNF-01; se adelanta de M3 porque M2 ya escribe y lee esas colecciones).
 - [ ] Registro e inicio de sesión con correo; perfil con rol `client`.
-- [ ] Inicio de sesión con Google.
-- [ ] Listado de recursos y detalle.
+- [ ] Inicio de sesión con Google (web contra el emulador; en móvil necesita el proyecto real,
+      M4).
+- [ ] Datos de ejemplo para el emulador; listado de recursos y detalle.
 - [ ] Cálculo de franjas desde el horario semanal (dominio, con pruebas unitarias).
 - [ ] Vista de franjas por fecha en tiempo real.
 
 ## M3 · Reservas (RF-03, RF-04)
 
 - [ ] Transacción de reserva con id de franja determinista.
-- [ ] Reglas de Firestore y pruebas de reglas en el emulador (RNF-01).
+- [ ] Reglas de Firestore para `slots` y `bookings`, con sus pruebas (RNF-01).
 - [ ] Límite de 3 reservas activas y bloqueo de franjas pasadas.
 - [ ] "Mis reservas" y cancelación con la regla de 2 horas.
 - [ ] Prueba de integración: reservar → cancelar.
