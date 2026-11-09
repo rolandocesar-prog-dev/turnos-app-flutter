@@ -54,3 +54,40 @@ jobs:
 
       - name: Pruebas de reglas en el emulador
         run: npm run test:rules
+
+  integration:
+    name: Integración (reservar → cancelar)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version-file: .fvmrc
+          cache: true
+
+      - name: Dependencias
+        run: |
+          npm ci
+          flutter pub get
+
+      # El runner trae Chrome y su chromedriver (CHROMEWEBDRIVER).
+      - name: Iniciar chromedriver
+        run: |
+          "$CHROMEWEBDRIVER/chromedriver" --port=4444 &
+          sleep 2
+
+      - name: Prueba de integración en Chrome contra los emuladores
+        run: npm run test:e2e

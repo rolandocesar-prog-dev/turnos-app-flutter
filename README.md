@@ -52,6 +52,26 @@ Calidad (lo mismo que corre el CI):
 fvm dart format --output=none --set-exit-if-changed .
 fvm flutter analyze
 fvm flutter test --coverage
+npm run test:rules     # reglas de Firestore en su propio emulador
+```
+
+### Prueba de integración
+
+`integration_test/` recorre la app real en Chrome contra los emuladores: crear una cuenta,
+reservar una franja, verla en «Mis reservas», cancelarla y comprobar que vuelve a estar libre.
+`npm run test:e2e` levanta sus propios emuladores (con los de desarrollo apagados), carga los datos
+de ejemplo y corre `flutter drive`. Necesita un
+[chromedriver](https://googlechromelabs.github.io/chrome-for-testing/) de la misma versión que tu
+Chrome, escuchando en el puerto 4444:
+
+```bash
+chromedriver --port=4444
+```
+
+En otra terminal (en PowerShell: `$env:FLUTTER = "fvm flutter"`):
+
+```bash
+FLUTTER="fvm flutter" npm run test:e2e
 ```
 
 ## Cómo se desarrolla

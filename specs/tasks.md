@@ -36,7 +36,7 @@ Cada tarea referencia su requisito. Marca `[x]` al terminar y haz un commit por 
 - [x] Reglas de Firestore para `slots` y `bookings`, con sus pruebas (RNF-01).
 - [x] Límite de 3 reservas activas (en la app; en el servidor, M4) y bloqueo de franjas pasadas.
 - [x] "Mis reservas" y cancelación con la regla de 2 horas.
-- [ ] Prueba de integración: reservar → cancelar.
+- [x] Prueba de integración: reservar → cancelar.
 
 ## M4 · Notificaciones y administración (RF-05, RF-06)
 

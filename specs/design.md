@@ -241,3 +241,11 @@ desactivadas, así no hace falta el SDK de administración.
   Chrome (`flutter drive`), contra los emuladores con datos de ejemplo. Recorre iniciar sesión,
   reservar una franja, verla en «Mis reservas», cancelarla y comprobar que vuelve a estar
   disponible. El CI la ejecuta en un trabajo propio.
+  - `flutter test` no corre pruebas de integración en web, por eso se usa `flutter drive` con
+    chromedriver en el puerto 4444 (`-d web-server --browser-name=chrome`, sin ventana). En el CI,
+    el runner de Ubuntu ya trae Chrome y su chromedriver (`CHROMEWEBDRIVER`).
+  - `npm run test:e2e` usa `firebase emulators:exec`: emuladores nuevos y vacíos en cada
+    ejecución, datos de `scripts/seed.mjs` y una cuenta nueva. Reserva la primera franja libre de
+    mañana, que siempre está a más de 2 horas, así que se puede cancelar a cualquier hora.
+  - Control: quitando el borrado de la franja al cancelar, las reglas rechazan la cancelación y la
+    prueba falla.
