@@ -34,7 +34,7 @@ Cada tarea referencia su requisito. Marca `[x]` al terminar y haz un commit por 
 
 - [ ] Transacción de reserva con id de franja determinista.
 - [ ] Reglas de Firestore para `slots` y `bookings`, con sus pruebas (RNF-01).
-- [ ] Límite de 3 reservas activas y bloqueo de franjas pasadas.
+- [ ] Límite de 3 reservas activas (en la app; en el servidor, M4) y bloqueo de franjas pasadas.
 - [ ] "Mis reservas" y cancelación con la regla de 2 horas.
 - [ ] Prueba de integración: reservar → cancelar.
 
@@ -44,6 +44,7 @@ Cada tarea referencia su requisito. Marca `[x]` al terminar y haz un commit por 
       Hosting; design.md §6).
 - [ ] FCM: registro de tokens por usuario.
 - [ ] Cloud Function programada: recordatorio 1 h antes.
+- [ ] Límite de 3 reservas activas también en el servidor (Cloud Functions; design.md §10).
 - [ ] Panel de administración: recursos, horarios, días bloqueados y reservas del día.
 
 ## M5 · Entrega

@@ -62,8 +62,11 @@ resources/{resourceId}/slots/{yyyy-MM-ddTHH:mm}  // id determinista = una franja
   bookingId, uid, createdAt
 
 bookings/{bookingId}
-  resourceId, uid, start, end, status: "active" | "cancelled", cancelReason?, createdAt
+  resourceId, resourceName, slotId, uid, startAt, endAt (timestamps),
+  status: "active" | "cancelled", createdAt, cancelledAt?, cancelReason?
 ```
+
+`resourceName` se copia en la reserva para mostrar «Mis reservas» sin leer cada recurso.
 
 ### Cómo se evita la doble reserva (RF-03)
 
@@ -83,7 +86,17 @@ falla y la app muestra "Ese horario acaba de ocuparse".
 - `resources/{id}/slots` (M2): **lectura** para usuarios autenticados, para mostrar qué franjas
   están ocupadas (RF-02). Como cualquiera con sesión las lee, un slot guarda solo datos opacos
   (`bookingId`, `uid`, `createdAt`), nunca nombre ni correo. La escritura sigue cerrada hasta M3.
-- La creación de `slots` exige que no exista y que `uid == request.auth.uid` (M3).
+- `slots` y `bookings` (M3), siempre **en la misma transacción**:
+  - **Reservar**: el slot solo se *crea* si no existe (escribir sobre uno existente sería una
+    actualización, y no está permitida), con el `uid` de la sesión y el `bookingId` de una reserva
+    que se crea en la misma transacción (`getAfter`) a nombre del mismo usuario, para ese recurso
+    y esa franja. La reserva exige: dueño = sesión, estado `active`, `startAt` **en el futuro**
+    según el servidor (`request.time`), `endAt > startAt`, recurso existente y activo, y solo los
+    campos del modelo.
+  - **Cancelar**: el dueño pasa la reserva de `active` a `cancelled` (y solo toca `status` y
+    `cancelledAt`) si faltan **al menos 2 horas** según el servidor; en la misma transacción borra
+    su slot, lo que solo se permite si la reserva queda cancelada (`getAfter`).
+  - Cada cliente lee solo sus reservas; las consultas deben filtrar por su `uid`. Nada se borra.
 - Todo lo demás está cerrado.
 - Las reglas se prueban con el emulador de Firestore y `@firebase/rules-unit-testing`, con el
   ejecutor de pruebas de Node (`node --test`, sin más dependencias): `npm run test:rules` levanta
@@ -180,3 +193,35 @@ desactivadas, así no hace falta el SDK de administración.
   pantalla la anuncie por separado.
 - Las pruebas de reglas no deben correr contra el emulador de desarrollo: dejan datos de prueba.
   Se corren con `npm run test:rules`, que levanta su propio emulador.
+
+## 10. Reservas (RF-03, RF-04, M3)
+
+- **Reservar** (`BookingRepository.book`): una transacción lee el slot; si existe, falla con
+  `BookingFailure.slotTaken` («Ese horario acaba de ocuparse»); si no, crea el slot y la reserva
+  (id generado) juntos. Si otra persona confirma la misma franja un instante antes, Firestore
+  reintenta la transacción, que entonces ve el slot y falla con ese mismo aviso; y si una escritura
+  directa intentara pisarlo, las reglas la rechazan (§4).
+- **Límite de 3 reservas futuras activas** (RF-03): antes de la transacción, la app cuenta las
+  reservas `active` del usuario con `startAt` futuro (las transacciones de los SDK móviles y web no
+  admiten consultas). **Limitación conocida**: las reglas de Firestore no pueden contar documentos,
+  así que un cliente modificado podría saltarse el límite, y dos reservas simultáneas del mismo
+  usuario también. El control en el servidor llega en M4 con Cloud Functions. La doble reserva de
+  una franja, en cambio, sí la impide el servidor.
+- **Franjas pasadas** (RF-03): la app no ofrece reservarlas (§9) y las reglas rechazan una reserva
+  con `startAt` en el pasado según la hora del servidor.
+- **Cancelar** (RF-04, `BookingRepository.cancel`): una transacción marca la reserva `cancelled`
+  y borra su slot, que vuelve a estar disponible. Faltando menos de 2 horas, la app no ofrece
+  cancelar y explica el motivo («Solo se puede cancelar hasta 2 horas antes»); las reglas lo
+  rechazan igual con la hora del servidor. La regla de las 2 horas es una función pura del
+  dominio (`canCancel`), con la misma frontera que las reglas.
+- **Mis reservas** (`/mis-reservas`): las próximas activas, en orden, con su botón de cancelar; y
+  las anteriores (pasadas o canceladas), sin acciones. Escucha en tiempo real las reservas del
+  usuario. En el proyecto real, la consulta por `uid` y `startAt` necesitará un índice compuesto,
+  declarado en `firestore.indexes.json`.
+- **Errores**: `BookingFailure` con mensajes en español (franja ocupada, límite alcanzado, franja
+  pasada, fuera de plazo para cancelar, sin conexión, desconocido); un rechazo de las reglas
+  (`permission-denied`) se traduce al motivo correspondiente según la acción.
+- **Prueba de integración** (reservar → cancelar): con `integration_test` sobre la app real en
+  Chrome (`flutter drive`), contra los emuladores con datos de ejemplo. Recorre iniciar sesión,
+  reservar una franja, verla en «Mis reservas», cancelarla y comprobar que vuelve a estar
+  disponible. El CI la ejecuta en un trabajo propio.
