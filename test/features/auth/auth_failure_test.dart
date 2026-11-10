@@ -1,8 +1,12 @@
+import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:turnos_app/src/core/l10n/l10n.dart';
 import 'package:turnos_app/src/features/auth/data/firebase_auth_repository.dart';
 import 'package:turnos_app/src/features/auth/domain/auth_failure.dart';
 
 void main() {
+  final l10n = lookupAppLocalizations(const Locale('es'));
+
   test(
       'usuario inexistente y contraseña incorrecta dan el mismo mensaje (RF-01)',
       () {
@@ -13,7 +17,7 @@ void main() {
       'invalid-login-credentials',
     ];
     final messages = {
-      for (final code in codes) authFailureReasonFor(code).message,
+      for (final code in codes) l10n.authFailure(authFailureReasonFor(code)),
     };
 
     expect(messages, {'Correo o contraseña incorrectos.'});
@@ -49,11 +53,17 @@ void main() {
   test('una ventana de Google bloqueada explica qué hacer', () {
     final reason = authFailureReasonFor('popup-blocked');
     expect(reason, AuthFailureReason.popupBlocked);
-    expect(reason.message, contains('ventanas emergentes'));
+    expect(l10n.authFailure(reason), contains('ventanas emergentes'));
   });
 
   test('un código desconocido da un mensaje genérico', () {
     expect(authFailureReasonFor('algo-nuevo'), AuthFailureReason.unknown);
-    expect(AuthFailureReason.unknown.message, isNotEmpty);
+    expect(l10n.authFailure(AuthFailureReason.unknown), isNotEmpty);
+  });
+
+  test('cada motivo tiene su texto', () {
+    for (final reason in AuthFailureReason.values) {
+      expect(l10n.authFailure(reason), isNotEmpty, reason: reason.name);
+    }
   });
 }

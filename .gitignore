@@ -28,3 +28,6 @@ node_modules/
 .vscode/
 .DS_Store
 Thumbs.db
+
+# Generado por gen-l10n al hacer pub get (design.md §14)
+lib/l10n/app_localizations*.dart

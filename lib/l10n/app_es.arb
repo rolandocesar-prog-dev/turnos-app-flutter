@@ -1,0 +1,41 @@
+{
+  "@@locale": "es",
+
+  "appTitle": "Turnos",
+  "loading": "Cargando",
+  "errorSemantics": "Error: {message}",
+  "@errorSemantics": {
+    "description": "Lo que anuncia el lector de pantalla para un mensaje de error.",
+    "placeholders": { "message": { "type": "String" } }
+  },
+  "genericError": "No se pudo completar. Vuelve a intentarlo.",
+  "networkError": "No hay conexión. Revisa tu internet y vuelve a probar.",
+  "back": "Volver",
+
+  "loginTitle": "Inicia sesión",
+  "registerTitle": "Crear cuenta",
+  "loginSubtitle": "Necesitas una cuenta para ver los horarios y reservar.",
+  "emailLabel": "Correo",
+  "passwordLabel": "Contraseña",
+  "signInButton": "Entrar",
+  "registerButton": "Crear cuenta",
+  "googleButton": "Continuar con Google",
+  "switchToSignIn": "¿Ya tienes cuenta? Inicia sesión",
+  "switchToRegister": "¿No tienes cuenta? Crea una",
+
+  "emailMissing": "Escribe tu correo.",
+  "emailInvalid": "El correo no tiene un formato válido.",
+  "passwordMissing": "Escribe tu contraseña.",
+  "passwordTooShort": "Usa al menos {min} caracteres.",
+  "@passwordTooShort": { "placeholders": { "min": { "type": "int" } } },
+
+  "authInvalidCredentials": "Correo o contraseña incorrectos.",
+  "@authInvalidCredentials": {
+    "description": "Un solo mensaje para usuario inexistente y contraseña incorrecta: no revela si el correo existe (RF-01)."
+  },
+  "authEmailInUse": "Ya existe una cuenta con ese correo. Inicia sesión.",
+  "authWeakPassword": "La contraseña es muy débil: usa al menos 6 caracteres.",
+  "authTooManyRequests": "Demasiados intentos. Espera un momento y vuelve a probar.",
+  "authCancelled": "Se canceló el inicio de sesión.",
+  "authPopupBlocked": "El navegador bloqueó la ventana de Google. Permite las ventanas emergentes para este sitio y vuelve a intentarlo."
+}

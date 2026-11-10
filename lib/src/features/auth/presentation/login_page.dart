@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/l10n/l10n.dart';
 import '../application/auth_controller.dart';
 import '../application/auth_providers.dart';
 import '../domain/auth_failure.dart';
@@ -43,12 +44,14 @@ class _LoginPageState extends ConsumerState<LoginPage> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = context.l10n;
     final action = ref.watch(authControllerProvider);
     final busy = action.isLoading;
     // En Riverpod 3, el estado de carga conserva el error anterior: mientras hay un intento en
     // curso no se muestra, para no confundirlo con el resultado del intento nuevo.
-    final error = action.hasError && !busy ? _messageFor(action.error) : null;
-    final title = _registering ? 'Crear cuenta' : 'Inicia sesión';
+    final error =
+        action.hasError && !busy ? _messageFor(l10n, action.error) : null;
+    final title = _registering ? l10n.registerTitle : l10n.loginTitle;
     final googleAvailable = ref.watch(googleSignInAvailableProvider);
 
     return Scaffold(
@@ -77,29 +80,30 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      'Necesitas una cuenta para ver los horarios y reservar.',
+                      l10n.loginSubtitle,
                       style: theme.textTheme.bodyLarge,
                       textAlign: TextAlign.center,
                     ),
                     const SizedBox(height: 24),
                     TextFormField(
                       controller: _email,
-                      decoration: const InputDecoration(
-                        labelText: 'Correo',
-                        prefixIcon: Icon(Icons.mail_outline),
+                      decoration: InputDecoration(
+                        labelText: l10n.emailLabel,
+                        prefixIcon: const Icon(Icons.mail_outline),
                       ),
                       keyboardType: TextInputType.emailAddress,
                       autofillHints: const [AutofillHints.email],
                       textInputAction: TextInputAction.next,
                       enabled: !busy,
-                      validator: CredentialValidators.email,
+                      validator: (value) => l10n
+                          .credentialIssue(CredentialValidators.email(value)),
                     ),
                     const SizedBox(height: 12),
                     TextFormField(
                       controller: _password,
-                      decoration: const InputDecoration(
-                        labelText: 'Contraseña',
-                        prefixIcon: Icon(Icons.lock_outline),
+                      decoration: InputDecoration(
+                        labelText: l10n.passwordLabel,
+                        prefixIcon: const Icon(Icons.lock_outline),
                       ),
                       obscureText: true,
                       autofillHints: [
@@ -109,7 +113,9 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                       ],
                       enabled: !busy,
                       onFieldSubmitted: (_) => _submit(),
-                      validator: CredentialValidators.password,
+                      validator: (value) => l10n.credentialIssue(
+                        CredentialValidators.password(value),
+                      ),
                     ),
                     if (error != null) ...[
                       const SizedBox(height: 16),
@@ -117,7 +123,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                         error,
                         style: TextStyle(color: theme.colorScheme.error),
                         textAlign: TextAlign.center,
-                        semanticsLabel: 'Error: $error',
+                        semanticsLabel: l10n.errorSemantics(error),
                       ),
                     ],
                     const SizedBox(height: 24),
@@ -128,7 +134,11 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                               dimension: 20,
                               child: CircularProgressIndicator(strokeWidth: 2),
                             )
-                          : Text(_registering ? 'Crear cuenta' : 'Entrar'),
+                          : Text(
+                              _registering
+                                  ? l10n.registerButton
+                                  : l10n.signInButton,
+                            ),
                     ),
                     if (googleAvailable) ...[
                       const SizedBox(height: 12),
@@ -139,7 +149,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                                 .read(authControllerProvider.notifier)
                                 .signInWithGoogle(),
                         icon: const Icon(Icons.account_circle_outlined),
-                        label: const Text('Continuar con Google'),
+                        label: Text(l10n.googleButton),
                       ),
                     ],
                     const SizedBox(height: 8),
@@ -149,8 +159,8 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                           : () => setState(() => _registering = !_registering),
                       child: Text(
                         _registering
-                            ? '¿Ya tienes cuenta? Inicia sesión'
-                            : '¿No tienes cuenta? Crea una',
+                            ? l10n.switchToSignIn
+                            : l10n.switchToRegister,
                       ),
                     ),
                   ],
@@ -163,6 +173,8 @@ class _LoginPageState extends ConsumerState<LoginPage> {
     );
   }
 
-  static String _messageFor(Object? error) =>
-      error is AuthFailure ? error.message : AuthFailureReason.unknown.message;
+  static String _messageFor(AppLocalizations l10n, Object? error) =>
+      l10n.authFailure(
+        error is AuthFailure ? error.reason : AuthFailureReason.unknown,
+      );
 }

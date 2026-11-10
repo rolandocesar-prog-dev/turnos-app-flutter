@@ -10,8 +10,8 @@ void main() {
     });
 
     test('pide el correo si está vacío', () {
-      expect(CredentialValidators.email(''), 'Escribe tu correo.');
-      expect(CredentialValidators.email(null), 'Escribe tu correo.');
+      expect(CredentialValidators.email(''), CredentialIssue.emailMissing);
+      expect(CredentialValidators.email(null), CredentialIssue.emailMissing);
     });
 
     test('rechaza formatos inválidos', () {
@@ -22,7 +22,11 @@ void main() {
         '@ejemplo.com',
         'ana @x.com',
       ]) {
-        expect(CredentialValidators.email(value), isNotNull, reason: value);
+        expect(
+          CredentialValidators.email(value),
+          CredentialIssue.emailInvalid,
+          reason: value,
+        );
       }
     });
   });
@@ -33,10 +37,13 @@ void main() {
     });
 
     test('pide la contraseña si está vacía y rechaza las cortas', () {
-      expect(CredentialValidators.password(''), 'Escribe tu contraseña.');
+      expect(
+        CredentialValidators.password(''),
+        CredentialIssue.passwordMissing,
+      );
       expect(
         CredentialValidators.password('12345'),
-        'Usa al menos 6 caracteres.',
+        CredentialIssue.passwordTooShort,
       );
     });
   });
