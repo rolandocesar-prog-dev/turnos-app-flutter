@@ -300,3 +300,28 @@ Se hace antes que el proyecto real de Firebase: todo funciona contra los emulado
   cliente (correo del perfil) y estado. Cancelar pide el motivo; el cliente lo ve en «Mis
   reservas» («Cancelada por el negocio: …»). La notificación push al cliente llega con FCM (M4,
   proyecto real).
+
+## 12. Cloud Functions (M4)
+
+- **Código**: `functions/`, TypeScript estricto, Node 22, Firebase Functions de 2.ª generación y
+  el SDK de administración. La lógica de decisión es **pura** (sin Firebase) y tiene pruebas
+  unitarias; los disparadores solo leen, llaman a esa lógica y escriben.
+- **Pruebas**: unitarias con Vitest; de integración contra los emuladores de Functions y
+  Firestore (`npm run test:functions` en la raíz, con `firebase emulators:exec`). El CI las corre
+  en el trabajo de reglas, que ya tiene Node y Java.
+- **Despliegue**: necesita el plan Blaze. Mientras el proyecto siga en Spark, las funciones solo
+  corren en el emulador (decisión del 2026-11-10).
+- **Límite de 3 reservas en el servidor** (RF-03): las reglas no pueden contar documentos (§10),
+  así que un disparador `onDocumentCreated('bookings/{id}')` revisa las reservas activas futuras
+  del mismo cliente después de cada reserva.
+  - Las ordena por `createdAt` (y por id si empatan) y cancela las que queden **después de la
+    tercera**. Como todos los disparadores calculan el mismo orden, dos reservas simultáneas del
+    mismo cliente terminan igual: se conservan las 3 primeras, sin importar cuál disparador corra
+    antes.
+  - Cancela como la app: `status: cancelled`, `cancelledAt`, `cancelledBy: "system"` y un
+    `cancelReason`, y borra la franja en el mismo lote, que vuelve a estar libre. El cliente lo ve
+    en «Mis reservas» como «Cancelada automáticamente: …».
+  - Es un control **posterior**: durante unos segundos la reserva de más existe. La app ya lo
+    impide antes (§10), así que solo actúa ante un cliente modificado o dos reservas simultáneas.
+  - `cancelledBy` lo escribe solo el servidor; las reglas no dejan que el cliente ni el
+    administrador lo escriban (el administrador cancela con `cancelReason`, §11).

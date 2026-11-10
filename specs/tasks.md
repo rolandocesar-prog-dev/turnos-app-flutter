@@ -51,9 +51,11 @@ necesita el proyecto real de Firebase.
 - [x] Proyecto real de Firebase (Spark, Firestore en São Paulo), `flutterfire configure` para
       Android y web, entorno `production` y publicación de reglas e índices (lo necesitan FCM,
       Cloud Functions y Hosting; design.md §6).
+- [ ] Base de Cloud Functions en TypeScript (`functions/`), con pruebas y emulador en el CI
+      (design.md §12).
+- [ ] Límite de 3 reservas activas también en el servidor (design.md §10 y §12).
 - [ ] FCM: registro de tokens por usuario.
 - [ ] Cloud Function programada: recordatorio 1 h antes.
-- [ ] Límite de 3 reservas activas también en el servidor (Cloud Functions; design.md §10).
 - [ ] Notificación al cliente cuando el administrador cancela su reserva (RF-05).
 
 ## M5 · Entrega
