@@ -15,7 +15,19 @@ class FirestoreUserProfileRepository implements UserProfileRepository {
     if ((await ref.get()).exists) return;
     await ref.set(newProfileData(user));
   }
+
+  @override
+  Stream<UserRole> watchRole(String uid) => _firestore
+      .collection('users')
+      .doc(uid)
+      .snapshots()
+      .map((doc) => roleFromProfile(doc.data()));
 }
+
+/// Solo `role: "admin"` da permisos de administración; cualquier otro valor, o la falta de
+/// perfil, es `client`, igual que en las reglas (design.md §4).
+UserRole roleFromProfile(Map<String, dynamic>? data) =>
+    data?['role'] == 'admin' ? UserRole.admin : UserRole.client;
 
 /// Datos de un perfil nuevo: siempre `client`; el nombre inicial sale del correo.
 Map<String, Object?> newProfileData(AppUser user) => {

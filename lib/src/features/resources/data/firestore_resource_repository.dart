@@ -17,10 +17,16 @@ class FirestoreResourceRepository implements ResourceRepository {
 
   @override
   Stream<List<Resource>> watchActive() =>
-      _resources.where('active', isEqualTo: true).snapshots().map(
+      _watchQuery(_resources.where('active', isEqualTo: true));
+
+  @override
+  Stream<List<Resource>> watchAll() => _watchQuery(_resources);
+
+  Stream<List<Resource>> _watchQuery(Query<Map<String, dynamic>> query) =>
+      query.snapshots().map(
             (snapshot) => resourcesFromFirestore(
               [for (final doc in snapshot.docs) (doc.id, doc.data())],
-              // Un recurso mal cargado se omite del catálogo y queda registrado.
+              // Un recurso mal cargado se omite de la lista y queda registrado.
               onInvalid: (error) =>
                   log('Recurso omitido: ${error.message}', name: 'resources'),
             ),

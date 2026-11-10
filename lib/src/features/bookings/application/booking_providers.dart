@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/data/no_retry.dart';
 import '../../auth/application/auth_providers.dart';
 import '../../resources/application/resource_providers.dart';
 import '../../resources/domain/resource.dart';

@@ -3,6 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/data/no_retry.dart';
 import '../data/firebase_auth_repository.dart';
 import '../data/firestore_user_profile_repository.dart';
 import '../domain/app_user.dart';
@@ -26,4 +27,15 @@ final googleSignInAvailableProvider = Provider<bool>((ref) => kIsWeb);
 /// Sesión actual: cargando, sin usuario (`null`) o con usuario.
 final authStateProvider = StreamProvider<AppUser?>(
   (ref) => ref.watch(authRepositoryProvider).authStateChanges(),
+);
+
+/// Rol del usuario con sesión, en tiempo real (design.md §11); sin sesión, `client`. Como los
+/// demás flujos de Firestore, no se reintenta (design.md §9).
+final currentRoleProvider = StreamProvider<UserRole>(
+  (ref) {
+    final user = ref.watch(authStateProvider).value;
+    if (user == null) return Stream.value(UserRole.client);
+    return ref.watch(userProfileRepositoryProvider).watchRole(user.uid);
+  },
+  retry: noRetry,
 );

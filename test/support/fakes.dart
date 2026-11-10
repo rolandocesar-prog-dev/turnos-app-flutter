@@ -56,6 +56,13 @@ class FakeResourceRepository implements ResourceRepository {
         ]);
 
   @override
+  Stream<List<Resource>> watchAll() => failWith != null
+      ? Stream.error(failWith!)
+      : Stream.value(
+          [...resources]..sort((a, b) => a.name.compareTo(b.name)),
+        );
+
+  @override
   Stream<Resource?> watch(String id) =>
       Stream.value(resources.where((r) => r.id == id).firstOrNull);
 }
@@ -265,10 +272,17 @@ class FakeAuthRepository implements AuthRepository {
   }
 }
 
-/// Registra los perfiles creados.
+/// Registra los perfiles creados; los uids de [admins] tienen rol de administrador.
 class FakeUserProfileRepository implements UserProfileRepository {
+  FakeUserProfileRepository({this.admins = const {}});
+
+  final Set<String> admins;
   final ensured = <AppUser>[];
 
   @override
   Future<void> ensureProfile(AppUser user) async => ensured.add(user);
+
+  @override
+  Stream<UserRole> watchRole(String uid) =>
+      Stream.value(admins.contains(uid) ? UserRole.admin : UserRole.client);
 }

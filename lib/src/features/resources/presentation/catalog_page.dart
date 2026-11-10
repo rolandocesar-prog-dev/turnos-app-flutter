@@ -4,6 +4,8 @@ import 'package:go_router/go_router.dart';
 
 import '../../../routing/session_redirect.dart';
 import '../../auth/application/auth_controller.dart';
+import '../../auth/application/auth_providers.dart';
+import '../../auth/domain/user_profile_repository.dart';
 import '../application/resource_providers.dart';
 import '../domain/resource.dart';
 import '../domain/schedule_format.dart';
@@ -15,11 +17,18 @@ class CatalogPage extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final resources = ref.watch(activeResourcesProvider);
+    final isAdmin = ref.watch(currentRoleProvider).value == UserRole.admin;
 
     return Scaffold(
       appBar: AppBar(
         title: const Text('Turnos'),
         actions: [
+          if (isAdmin)
+            IconButton(
+              tooltip: 'Administración',
+              icon: const Icon(Icons.admin_panel_settings),
+              onPressed: () => context.go(AppRoutes.admin),
+            ),
           IconButton(
             tooltip: 'Mis reservas',
             icon: const Icon(Icons.event_note),
