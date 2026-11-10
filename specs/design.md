@@ -319,7 +319,10 @@ Se hace antes que el proyecto real de Firebase: todo funciona contra los emulado
   panel, formulario de recurso, reservas del día) tiene una prueba de widgets con las guías de
   Flutter: contraste de texto AA (`textContrastGuideline`), áreas táctiles de 48 × 48
   (`androidTapTargetGuideline`) y botones con nombre (`labeledTapTargetGuideline`), en tema claro
-  y oscuro. Otra prueba las abre con el texto al 200 % y exige que no haya desbordes.
+  y oscuro. Otra prueba las abre con el texto al 200 % en un celular, las recorre hasta abajo
+  (las listas construyen solo lo visible) y exige que no haya desbordes. Hallazgo: el selector
+  de duración del formulario se desbordaba con texto grande (`isExpanded`). Controles: sin el
+  nombre de un botón fallan las guías; sin `isExpanded`, la de texto grande.
 
 ## 12. Cloud Functions (M4)
 

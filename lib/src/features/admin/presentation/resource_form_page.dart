@@ -180,6 +180,8 @@ class _ResourceFormState extends ConsumerState<_ResourceForm> {
           const SizedBox(height: 8),
           DropdownButtonFormField<int>(
             initialValue: _slotMinutes,
+            // Ocupa el ancho disponible: con texto grande, la opción elegida no se desborda.
+            isExpanded: true,
             decoration: InputDecoration(labelText: l10n.slotDurationLabel),
             items: [
               for (final minutes in _durations)

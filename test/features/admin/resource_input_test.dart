@@ -111,7 +111,8 @@ void main() {
       expect(l10n.resourceInputIssue(null), isNull);
       expect(
         l10n.dayRangesIssue(
-            ResourceInput.dayRanges('09:00-13:00, 12:00-14:00'),),
+          ResourceInput.dayRanges('09:00-13:00, 12:00-14:00'),
+        ),
         'Los intervalos deben ir en orden y sin solaparse.',
       );
       expect(
