@@ -3,10 +3,11 @@
   "private": true,
   "description": "Herramientas de Firebase para la app de turnos (emuladores; design.md §6).",
   "scripts": {
-    "emulators": "firebase emulators:start --project demo-turnos",
+    "emulators": "npm --prefix functions run build && firebase emulators:start --project demo-turnos",
     "seed": "node scripts/seed.mjs",
     "test:rules": "firebase emulators:exec --only firestore --project demo-turnos \"node --test rules-tests/*.test.mjs\"",
     "test:e2e": "firebase emulators:exec --only auth,firestore --project demo-turnos \"node scripts/e2e.mjs\"",
+    "test:functions": "npm --prefix functions run build && firebase emulators:exec --only functions,firestore --project demo-turnos \"npm --prefix functions run test:emulator\"",
     "deploy:firestore": "firebase deploy --only firestore --project turnos-rv-portafolio"
   },
   "devDependencies": {

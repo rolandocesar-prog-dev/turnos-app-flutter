@@ -398,6 +398,16 @@ describe('bookings/{id} con su franja', () => {
     await assertSucceeds(reservar(ANA));
     await assertFails(cancelar(ANA, { cambios: { cancelReason: 'Me equivoqué' } }));
   });
+
+  // cancelledBy lo escribe solo el servidor (límite de reservas, design.md §12).
+  test('ni el cliente ni el admin marcan una cancelación como del sistema', async () => {
+    await assertSucceeds(reservar(ANA));
+    await assertFails(cancelar(ANA, { cambios: { cancelledBy: 'system' } }));
+    await assertFails(
+      cancelar(ADMIN, { cambios: { cancelReason: 'Lluvia', cancelledBy: 'system' } }),
+    );
+    await assertFails(reservar(LUIS, { bookingId: 'bk2', slotId: '2026-12-01T12:00', booking: { cancelledBy: 'system' } }));
+  });
 });
 
 describe('cualquier otra colección', () => {
