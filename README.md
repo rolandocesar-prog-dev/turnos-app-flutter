@@ -60,6 +60,10 @@ fvm flutter run -d chrome --dart-define=FIREBASE_ENV=production
 Las opciones de `lib/firebase_options.dart` no son secretas (identifican el proyecto); los datos
 los protegen las reglas de seguridad, que se publican con `npm run deploy:firestore`.
 
+En el proyecto real nadie es administrador al empezar: crea tu cuenta en la app y, en la consola de
+Firebase, cambia `role` a `"admin"` en tu documento `users/{uid}`. Desde el panel de
+administración se cargan los recursos.
+
 Calidad (lo mismo que corre el CI):
 
 ```bash

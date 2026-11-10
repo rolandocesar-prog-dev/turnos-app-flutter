@@ -48,7 +48,7 @@ necesita el proyecto real de Firebase.
 - [x] Rol en la app: ruta `/admin` solo para administradores y lista de todos los recursos.
 - [x] Crear, editar y desactivar recursos, con horario semanal y días bloqueados (RF-06).
 - [x] Reservas del día y cancelación con motivo, visible para el cliente (RF-06).
-- [ ] Proyecto real de Firebase (Spark, Firestore en São Paulo), `flutterfire configure` para
+- [x] Proyecto real de Firebase (Spark, Firestore en São Paulo), `flutterfire configure` para
       Android y web, entorno `production` y publicación de reglas e índices (lo necesitan FCM,
       Cloud Functions y Hosting; design.md §6).
 - [ ] FCM: registro de tokens por usuario.
