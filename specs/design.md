@@ -151,6 +151,10 @@ desactivadas, así no hace falta el SDK de administración.
   opciones de `demo-turnos`: clave y app ficticias, que los emuladores aceptan, en
   `lib/src/core/firebase/`) o `production` (las opciones de `firebase_options.dart`, sin
   emuladores). Un valor desconocido falla al arrancar, en vez de conectarse a un lugar inesperado.
+- **Detalle conocido (solo emuladores, web)**: al recargar con una sesión abierta, Firebase Auth
+  restaura al usuario con una primera consulta al servicio real de Google, con la clave ficticia
+  de `demo-turnos`, antes de quedar conectado al emulador; Google responde 400 y la app sigue
+  normalmente contra el emulador. En producción no pasa (la clave es real y no hay emulador).
 - Emuladores (`firebase.json`): Auth en el puerto 9099, Firestore en 8080 y la interfaz en 4000.
   La app se conecta a `localhost` (web y escritorio) o a `10.0.2.2` (emulador de Android).
 - `firebase-tools` es una dependencia de desarrollo de npm (`package.json`), así su versión queda

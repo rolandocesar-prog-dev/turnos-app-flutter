@@ -75,4 +75,4 @@ necesita el proyecto real de Firebase.
       usuario** (2026-11-10): tiene cuenta de desarrollador, pero el ciclo de pruebas internas y
       cerradas lleva semanas; la demo pública es la versión web.
 - [x] README final con capturas, GIF y arquitectura.
-- [ ] Agregar el proyecto, con enlaces, a la sección Proyectos del CV.
+- [x] Agregar el proyecto, con enlaces, a la sección Proyectos del CV.
