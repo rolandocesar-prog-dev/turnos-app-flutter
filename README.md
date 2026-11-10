@@ -51,6 +51,15 @@ fvm flutter pub get
 fvm flutter run -d chrome
 ```
 
+Contra el proyecto real de Firebase (`turnos-rv-portafolio`) en lugar de los emuladores:
+
+```bash
+fvm flutter run -d chrome --dart-define=FIREBASE_ENV=production
+```
+
+Las opciones de `lib/firebase_options.dart` no son secretas (identifican el proyecto); los datos
+los protegen las reglas de seguridad, que se publican con `npm run deploy:firestore`.
+
 Calidad (lo mismo que corre el CI):
 
 ```bash

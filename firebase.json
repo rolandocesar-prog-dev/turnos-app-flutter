@@ -4,9 +4,39 @@
     "indexes": "firestore.indexes.json"
   },
   "emulators": {
-    "auth": { "host": "127.0.0.1", "port": 9099 },
-    "firestore": { "host": "127.0.0.1", "port": 8080 },
-    "ui": { "enabled": true, "host": "127.0.0.1", "port": 4000 },
+    "auth": {
+      "host": "127.0.0.1",
+      "port": 9099
+    },
+    "firestore": {
+      "host": "127.0.0.1",
+      "port": 8080
+    },
+    "ui": {
+      "enabled": true,
+      "host": "127.0.0.1",
+      "port": 4000
+    },
     "singleProjectMode": true
+  },
+  "flutter": {
+    "platforms": {
+      "android": {
+        "default": {
+          "projectId": "turnos-rv-portafolio",
+          "appId": "1:902487711242:android:9a2b7213f788b1cdbb89f3",
+          "fileOutput": "android/app/google-services.json"
+        }
+      },
+      "dart": {
+        "lib/firebase_options.dart": {
+          "projectId": "turnos-rv-portafolio",
+          "configurations": {
+            "android": "1:902487711242:android:9a2b7213f788b1cdbb89f3",
+            "web": "1:902487711242:web:98b7df4280ab35dbbb89f3"
+          }
+        }
+      }
+    }
   }
 }

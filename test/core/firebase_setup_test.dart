@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:turnos_app/firebase_options.dart';
 import 'package:turnos_app/src/core/firebase/firebase_setup.dart';
 
 void main() {
@@ -36,6 +37,28 @@ void main() {
   test('por defecto se usan los emuladores con el proyecto de demostración',
       () {
     expect(firebaseEnvironment, 'emulators');
+    expect(
+      parseFirebaseEnvironment(firebaseEnvironment),
+      FirebaseEnvironment.emulators,
+    );
     expect(demoProjectId, startsWith('demo-'));
+  });
+
+  test('production usa el proyecto real; otro valor falla al arrancar', () {
+    expect(
+      parseFirebaseEnvironment('production'),
+      FirebaseEnvironment.production,
+    );
+    expect(() => parseFirebaseEnvironment('prod'), throwsUnsupportedError);
+    expect(() => parseFirebaseEnvironment(''), throwsUnsupportedError);
+  });
+
+  test('las opciones del proyecto real apuntan a turnos-rv-portafolio', () {
+    for (final options in [
+      DefaultFirebaseOptions.web,
+      DefaultFirebaseOptions.android,
+    ]) {
+      expect(options.projectId, 'turnos-rv-portafolio');
+    }
   });
 }
