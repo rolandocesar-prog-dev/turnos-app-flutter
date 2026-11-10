@@ -302,6 +302,25 @@ Se hace antes que el proyecto real de Firebase: todo funciona contra los emulado
   reservas» («Cancelada por el negocio: …»). La notificación push al cliente llega con FCM (M4,
   proyecto real).
 
+## 14. Textos y accesibilidad (RNF-03, RNF-06, M5)
+
+- **Textos en ARB**: `lib/l10n/app_es.arb` es la plantilla; `flutter gen-l10n` (con
+  `generate: true` y `l10n.yaml`) genera `AppLocalizations` al hacer `pub get`, formateado, y no
+  va al repositorio. Por ahora solo hay español; agregar un idioma es sumar un `.arb`.
+- **El dominio no tiene textos**: los errores y las validaciones devuelven un motivo (enum) y la
+  presentación lo traduce (`l10n.bookingFailure(reason)` y similares, en
+  `lib/src/core/l10n/`). Así el dominio sigue sin depender de Flutter (§1).
+- **Fechas y horas**: las etiquetas («Hoy», «mié 11 nov», «Turnos de 1 h 30 min», «Cerrado»)
+  salen del ARB; `ScheduleFormat` pasa a la presentación y recibe las traducciones. Las horas
+  siguen en formato de 24 h.
+- **Límite conocido**: los avisos push los escriben las Cloud Functions en español (§13); se
+  traducirían guardando el idioma en el perfil.
+- **Accesibilidad**: cada pantalla principal (acceso, catálogo, detalle con franjas, Mis reservas,
+  panel, formulario de recurso, reservas del día) tiene una prueba de widgets con las guías de
+  Flutter: contraste de texto AA (`textContrastGuideline`), áreas táctiles de 48 × 48
+  (`androidTapTargetGuideline`) y botones con nombre (`labeledTapTargetGuideline`), en tema claro
+  y oscuro. Otra prueba las abre con el texto al 200 % y exige que no haya desbordes.
+
 ## 12. Cloud Functions (M4)
 
 - **Código**: `functions/`, TypeScript estricto, Node 22, Firebase Functions de 2.ª generación y
