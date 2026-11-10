@@ -63,7 +63,7 @@ necesita el proyecto real de Firebase.
 
 ## M5 · Entrega
 
-- [ ] Textos en ARB con `gen-l10n`; el dominio devuelve motivos y la presentación los traduce
+- [x] Textos en ARB con `gen-l10n`; el dominio devuelve motivos y la presentación los traduce
       (RNF-06, design.md §14).
 - [ ] Pruebas de accesibilidad de las pantallas principales: contraste, áreas táctiles, botones
       con nombre (tema claro y oscuro) y texto al 200 % (RNF-03, design.md §14).

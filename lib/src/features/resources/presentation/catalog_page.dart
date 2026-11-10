@@ -2,13 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/l10n/l10n.dart';
+import '../../../core/l10n/schedule_labels.dart';
 import '../../../routing/session_redirect.dart';
 import '../../auth/application/auth_controller.dart';
 import '../../auth/application/auth_providers.dart';
 import '../../auth/domain/user_profile_repository.dart';
 import '../application/resource_providers.dart';
 import '../domain/resource.dart';
-import '../domain/schedule_format.dart';
 
 /// Inicio: catálogo de recursos activos, en tiempo real (RF-02).
 class CatalogPage extends ConsumerWidget {
@@ -16,26 +17,27 @@ class CatalogPage extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = context.l10n;
     final resources = ref.watch(activeResourcesProvider);
     final isAdmin = ref.watch(currentRoleProvider).value == UserRole.admin;
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Turnos'),
+        title: Text(l10n.catalogTitle),
         actions: [
           if (isAdmin)
             IconButton(
-              tooltip: 'Administración',
+              tooltip: l10n.adminTooltip,
               icon: const Icon(Icons.admin_panel_settings),
               onPressed: () => context.go(AppRoutes.admin),
             ),
           IconButton(
-            tooltip: 'Mis reservas',
+            tooltip: l10n.myBookingsTooltip,
             icon: const Icon(Icons.event_note),
             onPressed: () => context.go(AppRoutes.myBookings),
           ),
           IconButton(
-            tooltip: 'Cerrar sesión',
+            tooltip: l10n.signOutTooltip,
             icon: const Icon(Icons.logout),
             onPressed: () =>
                 ref.read(authControllerProvider.notifier).signOut(),
@@ -43,19 +45,13 @@ class CatalogPage extends ConsumerWidget {
         ],
       ),
       body: resources.when(
-        loading: () => const Center(
-          child:
-              CircularProgressIndicator(semanticsLabel: 'Cargando el catálogo'),
+        loading: () => Center(
+          child: CircularProgressIndicator(semanticsLabel: l10n.catalogLoading),
         ),
-        error: (_, __) => const _Message(
-          icon: Icons.cloud_off,
-          text: 'No se pudo cargar el catálogo. Revisa tu conexión.',
-        ),
+        error: (_, __) =>
+            _Message(icon: Icons.cloud_off, text: l10n.catalogError),
         data: (items) => items.isEmpty
-            ? const _Message(
-                icon: Icons.event_busy,
-                text: 'Todavía no hay lugares para reservar.',
-              )
+            ? _Message(icon: Icons.event_busy, text: l10n.catalogEmpty)
             : _CatalogList(items),
       ),
     );
@@ -69,13 +65,15 @@ class _CatalogList extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    final labels = ScheduleLabels(l10n);
     final textTheme = Theme.of(context).textTheme;
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
-        Text('Reserva tu turno en segundos', style: textTheme.titleLarge),
+        Text(l10n.catalogHeadline, style: textTheme.titleLarge),
         const SizedBox(height: 4),
-        Text('Elige dónde quieres reservar.', style: textTheme.bodyMedium),
+        Text(l10n.catalogSubtitle, style: textTheme.bodyMedium),
         const SizedBox(height: 16),
         for (final resource in resources)
           Card(
@@ -84,7 +82,7 @@ class _CatalogList extends StatelessWidget {
               title: Text(resource.name),
               subtitle: Text(
                 '${resource.description}\n'
-                '${ScheduleFormat.slotDuration(resource.slotMinutes)}',
+                '${labels.slotDuration(resource.slotMinutes)}',
               ),
               isThreeLine: true,
               trailing: const Icon(Icons.chevron_right),

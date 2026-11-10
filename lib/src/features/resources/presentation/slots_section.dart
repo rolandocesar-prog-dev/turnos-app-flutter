@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/l10n/l10n.dart';
+import '../../../core/l10n/schedule_labels.dart';
 import '../../bookings/application/booking_providers.dart';
-import '../../bookings/domain/booking_failure.dart';
 import '../application/resource_providers.dart';
 import '../domain/resource.dart';
 import '../domain/schedule_format.dart';
@@ -41,11 +42,13 @@ class _SlotsSectionState extends ConsumerState<SlotsSection> {
     );
     final busy = ref.watch(bookingControllerProvider).isLoading;
     final textTheme = Theme.of(context).textTheme;
+    final l10n = context.l10n;
+    final labels = ScheduleLabels(l10n);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('Turnos', style: textTheme.titleMedium),
+        Text(l10n.slotsTitle, style: textTheme.titleMedium),
         const SizedBox(height: 8),
         SingleChildScrollView(
           scrollDirection: Axis.horizontal,
@@ -55,7 +58,7 @@ class _SlotsSectionState extends ConsumerState<SlotsSection> {
                 Padding(
                   padding: const EdgeInsets.only(right: 8),
                   child: ChoiceChip(
-                    label: Text(ScheduleFormat.dayLabel(value, today)),
+                    label: Text(labels.dayLabel(value, today)),
                     selected: index == _selected,
                     onSelected: (_) => setState(() => _selected = index),
                   ),
@@ -65,16 +68,15 @@ class _SlotsSectionState extends ConsumerState<SlotsSection> {
         ),
         const SizedBox(height: 16),
         if (slots.isEmpty)
-          const Text('Cerrado este día.')
+          Text(l10n.slotsClosedDay)
         else
           taken.when(
-            loading: () => const Center(
+            loading: () => Center(
               child: CircularProgressIndicator(
-                semanticsLabel: 'Cargando los turnos',
+                semanticsLabel: l10n.slotsLoading,
               ),
             ),
-            error: (_, __) =>
-                const Text('No se pudo cargar la disponibilidad.'),
+            error: (_, __) => Text(l10n.slotsError),
             data: (takenIds) => Wrap(
               spacing: 8,
               runSpacing: 8,
@@ -85,7 +87,7 @@ class _SlotsSectionState extends ConsumerState<SlotsSection> {
                     onBook: view.status == SlotStatus.available && !busy
                         ? () => _book(
                               view.slot,
-                              ScheduleFormat.dayLabel(day, today),
+                              labels.dayLabel(day, today),
                             )
                         : null,
                   ),
@@ -98,20 +100,22 @@ class _SlotsSectionState extends ConsumerState<SlotsSection> {
 
   /// Pide confirmación, reserva y avisa el resultado (RF-03, design.md §10).
   Future<void> _book(Slot slot, String dayLabel) async {
+    final l10n = context.l10n;
     final time = _timeOf(slot);
+    final when = l10n.dateAndTime(dayLabel, time);
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('¿Reservar este turno?'),
-        content: Text('${widget.resource.name}\n$dayLabel, $time'),
+        title: Text(l10n.bookDialogTitle),
+        content: Text('${widget.resource.name}\n$when'),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Volver'),
+            child: Text(l10n.back),
           ),
           FilledButton(
             onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('Reservar'),
+            child: Text(l10n.bookButton),
           ),
         ],
       ),
@@ -123,9 +127,8 @@ class _SlotsSectionState extends ConsumerState<SlotsSection> {
         .book(widget.resource, slot);
     if (!mounted) return;
     final message = switch (ref.read(bookingControllerProvider)) {
-      AsyncError(error: final BookingFailure failure) => failure.message,
-      AsyncError() => BookingFailureReason.unknown.message,
-      _ => 'Turno reservado: $dayLabel, $time.',
+      AsyncError(:final error) => l10n.bookingError(error),
+      _ => l10n.bookedMessage(when),
     };
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
@@ -147,6 +150,7 @@ class _SlotChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
+    final l10n = context.l10n;
     final time = _timeOf(view.slot);
     final (icon, background, foreground) = switch (view.status) {
       SlotStatus.available => (
@@ -177,7 +181,7 @@ class _SlotChip extends StatelessWidget {
       // Nodo propio: un lector de pantalla anuncia cada franja por separado con su estado y, si
       // se puede reservar, como botón.
       container: true,
-      label: '$time, ${view.status.label}',
+      label: l10n.slotSemantics(time, l10n.slotStatusLabel(view.status)),
       button: onBook != null,
       onTap: onBook,
       excludeSemantics: true,
@@ -187,7 +191,7 @@ class _SlotChip extends StatelessWidget {
               label: Text(time),
               backgroundColor: background,
               labelStyle: labelStyle,
-              tooltip: 'Reservar a las $time',
+              tooltip: l10n.bookAtTooltip(time),
               onPressed: onBook,
             )
           : Chip(

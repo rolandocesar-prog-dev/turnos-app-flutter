@@ -1,5 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:turnos_app/src/core/l10n/l10n.dart';
 import 'package:turnos_app/src/features/bookings/data/booking_mapper.dart';
 import 'package:turnos_app/src/features/bookings/domain/booking.dart';
 
@@ -52,11 +54,17 @@ void main() {
 
     test('el motivo tiene de 3 a 200 caracteres, sin contar espacios de borde',
         () {
-      expect(cancelReasonError(null), isNotNull);
-      expect(cancelReasonError('  no  '), isNotNull);
-      expect(cancelReasonError('Luz'), isNull);
-      expect(cancelReasonError('x' * 200), isNull);
-      expect(cancelReasonError('x' * 201), isNotNull);
+      expect(cancelReasonIssue(null), CancelReasonIssue.tooShort);
+      expect(cancelReasonIssue('  no  '), CancelReasonIssue.tooShort);
+      expect(cancelReasonIssue('Luz'), isNull);
+      expect(cancelReasonIssue('x' * 200), isNull);
+      expect(cancelReasonIssue('x' * 201), CancelReasonIssue.tooLong);
+      final l10n = lookupAppLocalizations(const Locale('es'));
+      expect(
+        l10n.cancelReasonIssue(CancelReasonIssue.tooShort),
+        'Escribe el motivo (al menos 3 caracteres).',
+      );
+      expect(l10n.cancelReasonIssue(null), isNull);
     });
   });
 
@@ -95,10 +103,24 @@ void main() {
     });
 
     test('distingue quién canceló (design.md §12)', () {
-      String label(Map<String, dynamic> extra) => bookingFromFirestore(
+      final l10n = lookupAppLocalizations(const Locale('es'));
+      Booking cancelled(Map<String, dynamic> extra) => bookingFromFirestore(
             'b',
             data(status: 'cancelled')..addAll(extra),
-          ).cancellationLabel;
+          );
+      String label(Map<String, dynamic> extra) =>
+          l10n.cancellation(cancelled(extra));
+
+      expect(cancelled({}).cancelledBy, CancelledBy.client);
+      expect(
+        cancelled({'cancelReason': 'x'}).cancelledBy,
+        CancelledBy.business,
+      );
+      expect(
+        cancelled({'cancelledBy': 'system'}).cancelledBy,
+        CancelledBy.system,
+      );
+      expect(bookingFromFirestore('b', data()).cancelledBy, isNull);
 
       expect(label({}), 'Cancelada');
       expect(

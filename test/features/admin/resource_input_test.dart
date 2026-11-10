@@ -1,8 +1,16 @@
+import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:turnos_app/src/core/l10n/l10n.dart';
 import 'package:turnos_app/src/features/admin/domain/resource_input.dart';
 import 'package:turnos_app/src/features/resources/domain/resource.dart';
 
+Matcher throwsIssue(DayRangesIssue issue) => throwsA(
+      isA<DayRangesException>().having((e) => e.issue, 'issue', issue),
+    );
+
 void main() {
+  final l10n = lookupAppLocalizations(const Locale('es'));
+
   group('parseDayRanges (design.md §11)', () {
     test('vacío es cerrado', () {
       expect(parseDayRanges(''), isEmpty);
@@ -29,26 +37,39 @@ void main() {
       for (final text in ['9 a 13', '09:00', '09:00-', '09:00-13:00,', 'x']) {
         expect(
           () => parseDayRanges(text),
-          throwsFormatException,
+          throwsIssue(DayRangesIssue.notARange),
           reason: text,
         );
       }
     });
 
     test('rechaza horas imposibles y un fin que no es posterior', () {
-      expect(() => parseDayRanges('25:00-26:00'), throwsFormatException);
-      expect(() => parseDayRanges('13:00-09:00'), throwsFormatException);
-      expect(() => parseDayRanges('09:00-09:00'), throwsFormatException);
+      expect(
+        () => parseDayRanges('25:00-26:00'),
+        throwsIssue(DayRangesIssue.invalidTime),
+      );
+      expect(
+        () => parseDayRanges('09:60-10:00'),
+        throwsIssue(DayRangesIssue.invalidTime),
+      );
+      expect(
+        () => parseDayRanges('13:00-09:00'),
+        throwsIssue(DayRangesIssue.endBeforeStart),
+      );
+      expect(
+        () => parseDayRanges('09:00-09:00'),
+        throwsIssue(DayRangesIssue.endBeforeStart),
+      );
     });
 
     test('rechaza intervalos desordenados o solapados', () {
       expect(
         () => parseDayRanges('15:00-19:00, 09:00-13:00'),
-        throwsFormatException,
+        throwsIssue(DayRangesIssue.overlap),
       );
       expect(
         () => parseDayRanges('09:00-13:00, 12:00-14:00'),
-        throwsFormatException,
+        throwsIssue(DayRangesIssue.overlap),
       );
     });
 
@@ -62,26 +83,42 @@ void main() {
 
   group('ResourceInput', () {
     test('el nombre es obligatorio y tiene un máximo', () {
-      expect(ResourceInput.name(''), 'Escribe un nombre.');
-      expect(ResourceInput.name('   '), 'Escribe un nombre.');
+      expect(ResourceInput.name(''), ResourceInputIssue.nameMissing);
+      expect(ResourceInput.name('   '), ResourceInputIssue.nameMissing);
       expect(ResourceInput.name('Cancha'), isNull);
       expect(ResourceInput.name('x' * 60), isNull);
-      expect(ResourceInput.name('x' * 61), isNotNull);
+      expect(ResourceInput.name('x' * 61), ResourceInputIssue.nameTooLong);
     });
 
     test('la descripción es opcional y tiene un máximo', () {
       expect(ResourceInput.description(''), isNull);
       expect(ResourceInput.description('x' * 300), isNull);
-      expect(ResourceInput.description('x' * 301), isNotNull);
+      expect(
+        ResourceInput.description('x' * 301),
+        ResourceInputIssue.descriptionTooLong,
+      );
     });
 
-    test('el horario de un día muestra el mensaje del error', () {
-      expect(ResourceInput.dayRanges('09:00-13:00'), isNull);
-      expect(ResourceInput.dayRanges(''), isNull);
+    test('los problemas se traducen para el formulario', () {
       expect(
-        ResourceInput.dayRanges('09:00-13:00, 12:00-14:00'),
+        l10n.resourceInputIssue(ResourceInputIssue.nameMissing),
+        'Escribe un nombre.',
+      );
+      expect(
+        l10n.resourceInputIssue(ResourceInputIssue.nameTooLong),
+        'Usa como máximo 60 caracteres.',
+      );
+      expect(l10n.resourceInputIssue(null), isNull);
+      expect(
+        l10n.dayRangesIssue(
+            ResourceInput.dayRanges('09:00-13:00, 12:00-14:00'),),
         'Los intervalos deben ir en orden y sin solaparse.',
       );
+      expect(
+        l10n.dayRangesIssue(ResourceInput.dayRanges('de 9 a 13')),
+        '«de 9 a 13» no es un intervalo; escribe por ejemplo 09:00-13:00.',
+      );
+      expect(l10n.dayRangesIssue(ResourceInput.dayRanges('')), isNull);
     });
   });
 }

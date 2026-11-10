@@ -1,6 +1,13 @@
 /// Estado de una reserva (design.md §3).
 enum BookingStatus { active, cancelled }
 
+/// Quién canceló una reserva: el cliente, el negocio (con motivo, §11) o el servidor por el
+/// límite (§12).
+enum CancelledBy { client, business, system }
+
+/// Problemas del motivo que escribe el administrador al cancelar.
+enum CancelReasonIssue { tooShort, tooLong }
+
 /// Una reserva del usuario: `bookings/{id}`.
 class Booking {
   const Booking({
@@ -34,12 +41,13 @@ class Booking {
   /// La canceló el servidor por superar el límite de reservas (design.md §12).
   final bool cancelledBySystem;
 
-  /// Texto del estado de una reserva cancelada, para el cliente y el administrador.
-  String get cancellationLabel => switch ((cancelledBySystem, cancelReason)) {
-        (true, final reason) => 'Cancelada automáticamente: '
-            '${reason ?? 'superaste el límite de reservas.'}',
-        (false, final String reason) => 'Cancelada por el negocio: $reason',
-        (false, null) => 'Cancelada',
+  /// Quién la canceló; `null` si sigue activa.
+  CancelledBy? get cancelledBy => switch (status) {
+        BookingStatus.active => null,
+        BookingStatus.cancelled when cancelledBySystem => CancelledBy.system,
+        BookingStatus.cancelled when cancelReason != null =>
+          CancelledBy.business,
+        BookingStatus.cancelled => CancelledBy.client,
       };
 
   /// Reserva activa que todavía no empezó.
@@ -68,14 +76,10 @@ bool canAdminCancel(Booking booking, DateTime now) =>
 const cancelReasonMinLength = 3;
 const cancelReasonMaxLength = 200;
 
-/// Mensaje de error del motivo, o `null` si es válido.
-String? cancelReasonError(String? value) {
+/// Problema del motivo, o `null` si es válido.
+CancelReasonIssue? cancelReasonIssue(String? value) {
   final length = value?.trim().length ?? 0;
-  if (length < cancelReasonMinLength) {
-    return 'Escribe el motivo (al menos $cancelReasonMinLength caracteres).';
-  }
-  if (length > cancelReasonMaxLength) {
-    return 'Usa como máximo $cancelReasonMaxLength caracteres.';
-  }
+  if (length < cancelReasonMinLength) return CancelReasonIssue.tooShort;
+  if (length > cancelReasonMaxLength) return CancelReasonIssue.tooLong;
   return null;
 }

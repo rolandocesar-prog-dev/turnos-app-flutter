@@ -1,5 +1,7 @@
+import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:turnos_app/src/features/resources/domain/schedule_format.dart';
+import 'package:turnos_app/src/core/l10n/l10n.dart';
+import 'package:turnos_app/src/core/l10n/schedule_labels.dart';
 import 'package:turnos_app/src/features/resources/domain/slot_calculator.dart';
 import 'package:turnos_app/src/features/resources/domain/slot_status.dart';
 
@@ -40,10 +42,11 @@ void main() {
   });
 
   test('etiquetas de los días del selector', () {
+    final labels = ScheduleLabels(lookupAppLocalizations(const Locale('es')));
     final today = DateTime(2026, 11, 9, 22);
-    expect(ScheduleFormat.dayLabel(DateTime(2026, 11, 9), today), 'Hoy');
-    expect(ScheduleFormat.dayLabel(DateTime(2026, 11, 10), today), 'Mañana');
-    expect(ScheduleFormat.dayLabel(DateTime(2026, 11, 11), today), 'mié 11');
-    expect(ScheduleFormat.dayLabel(DateTime(2026, 11, 15), today), 'dom 15');
+    expect(labels.dayLabel(DateTime(2026, 11, 9), today), 'Hoy');
+    expect(labels.dayLabel(DateTime(2026, 11, 10), today), 'Mañana');
+    expect(labels.dayLabel(DateTime(2026, 11, 11), today), 'mié 11');
+    expect(labels.dayLabel(DateTime(2026, 11, 15), today), 'dom 15');
   });
 }

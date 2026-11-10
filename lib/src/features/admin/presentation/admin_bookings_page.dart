@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/l10n/l10n.dart';
+import '../../../core/l10n/schedule_labels.dart';
 import '../../bookings/domain/booking.dart';
-import '../../bookings/domain/booking_failure.dart';
 import '../../resources/application/resource_providers.dart';
 import '../../resources/domain/schedule_format.dart';
 import '../application/admin_providers.dart';
@@ -34,10 +35,11 @@ class _AdminBookingsPageState extends ConsumerState<AdminBookingsPage> {
   Widget build(BuildContext context) {
     final now = ref.watch(clockProvider)();
     final bookings = ref.watch(dayBookingsProvider(_day));
-    final label = ScheduleFormat.dateLabel(_day, now);
+    final l10n = context.l10n;
+    final label = ScheduleLabels(l10n).dateLabel(_day, now);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Reservas del día')),
+      appBar: AppBar(title: Text(l10n.dayBookingsTitle)),
       body: Column(
         children: [
           Padding(
@@ -45,7 +47,7 @@ class _AdminBookingsPageState extends ConsumerState<AdminBookingsPage> {
             child: Row(
               children: [
                 IconButton(
-                  tooltip: 'Día anterior',
+                  tooltip: l10n.previousDay,
                   icon: const Icon(Icons.chevron_left),
                   onPressed: () => _move(-1),
                 ),
@@ -57,7 +59,7 @@ class _AdminBookingsPageState extends ConsumerState<AdminBookingsPage> {
                   ),
                 ),
                 IconButton(
-                  tooltip: 'Día siguiente',
+                  tooltip: l10n.nextDay,
                   icon: const Icon(Icons.chevron_right),
                   onPressed: () => _move(1),
                 ),
@@ -66,16 +68,14 @@ class _AdminBookingsPageState extends ConsumerState<AdminBookingsPage> {
           ),
           Expanded(
             child: bookings.when(
-              loading: () => const Center(
+              loading: () => Center(
                 child: CircularProgressIndicator(
-                  semanticsLabel: 'Cargando reservas',
+                  semanticsLabel: l10n.dayBookingsLoading,
                 ),
               ),
-              error: (_, __) => const _Message(
-                'No se pudieron cargar las reservas. Revisa tu conexión.',
-              ),
+              error: (_, __) => _Message(l10n.dayBookingsError),
               data: (items) => items.isEmpty
-                  ? _Message('No hay reservas para $label.')
+                  ? _Message(l10n.noDayBookings(label))
                   : ListView(
                       padding: const EdgeInsets.all(16),
                       children: [
@@ -102,18 +102,18 @@ class _AdminBookingCard extends ConsumerWidget {
     final email = ref.watch(clientEmailProvider(booking.uid));
     final busy = ref.watch(adminBookingControllerProvider).isLoading;
     final cancellable = canAdminCancel(booking, now);
+    final l10n = context.l10n;
     final client = switch (email) {
       AsyncData(value: final String value) => value,
-      AsyncLoading() => 'Cargando cliente…',
-      _ => 'Cliente sin datos',
+      AsyncLoading() => l10n.clientLoading,
+      _ => l10n.clientUnknown,
     };
     final status = switch (booking.status) {
-      BookingStatus.cancelled =>
-        booking.cancelReason == null && !booking.cancelledBySystem
-            ? 'Cancelada por el cliente'
-            : booking.cancellationLabel,
-      BookingStatus.active when !cancellable => 'Ya empezó',
-      BookingStatus.active => 'Activa',
+      BookingStatus.cancelled => booking.cancelledBy == CancelledBy.client
+          ? l10n.statusCancelledByClient
+          : l10n.cancellation(booking),
+      BookingStatus.active when !cancellable => l10n.statusStarted,
+      BookingStatus.active => l10n.statusActive,
     };
 
     return Card(
@@ -124,15 +124,17 @@ class _AdminBookingCard extends ConsumerWidget {
               : Icons.event_available,
         ),
         title: Text(
-          '${ScheduleFormat.clock(booking.startAt)}–'
-          '${ScheduleFormat.clock(booking.endAt)} · ${booking.resourceName}',
+          l10n.adminBookingTitle(
+            ScheduleLabels(l10n).clockRange(booking.startAt, booking.endAt),
+            booking.resourceName,
+          ),
         ),
         subtitle: Text('$client\n$status'),
         isThreeLine: true,
         trailing: cancellable
             ? TextButton(
                 onPressed: busy ? null : () => _cancel(context, ref),
-                child: const Text('Cancelar'),
+                child: Text(l10n.cancel),
               )
             : null,
       ),
@@ -150,10 +152,10 @@ class _AdminBookingCard extends ConsumerWidget {
         .read(adminBookingControllerProvider.notifier)
         .cancel(booking, reason);
     if (!context.mounted) return;
+    final l10n = context.l10n;
     final message = switch (ref.read(adminBookingControllerProvider)) {
-      AsyncError(error: final BookingFailure failure) => failure.message,
-      AsyncError() => BookingFailureReason.unknown.message,
-      _ => 'Reserva cancelada. El horario quedó libre.',
+      AsyncError(:final error) => l10n.bookingError(error),
+      _ => l10n.cancelledMessage,
     };
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
@@ -184,8 +186,9 @@ class _CancelDialogState extends State<_CancelDialog> {
   @override
   Widget build(BuildContext context) {
     final booking = widget.booking;
+    final l10n = context.l10n;
     return AlertDialog(
-      title: const Text('¿Cancelar esta reserva?'),
+      title: Text(l10n.cancelDialogTitle),
       content: Form(
         key: _formKey,
         child: Column(
@@ -200,11 +203,12 @@ class _CancelDialogState extends State<_CancelDialog> {
               controller: _reason,
               autofocus: true,
               maxLength: cancelReasonMaxLength,
-              decoration: const InputDecoration(
-                labelText: 'Motivo',
-                helperText: 'El cliente lo verá en «Mis reservas».',
+              decoration: InputDecoration(
+                labelText: l10n.reasonLabel,
+                helperText: l10n.reasonHelp,
               ),
-              validator: cancelReasonError,
+              validator: (value) =>
+                  l10n.cancelReasonIssue(cancelReasonIssue(value)),
             ),
           ],
         ),
@@ -212,7 +216,7 @@ class _CancelDialogState extends State<_CancelDialog> {
       actions: [
         TextButton(
           onPressed: () => Navigator.of(context).pop(),
-          child: const Text('Volver'),
+          child: Text(l10n.back),
         ),
         FilledButton(
           onPressed: () {
@@ -220,7 +224,7 @@ class _CancelDialogState extends State<_CancelDialog> {
               Navigator.of(context).pop(_reason.text.trim());
             }
           },
-          child: const Text('Cancelar reserva'),
+          child: Text(l10n.cancelBookingButton),
         ),
       ],
     );

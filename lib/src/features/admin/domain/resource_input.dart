@@ -1,9 +1,26 @@
 import '../../resources/domain/resource.dart';
 import '../../resources/domain/schedule_format.dart';
 
-/// Validación de lo que el administrador escribe en el formulario de recurso (design.md §11).
-/// Funciones puras: devuelven el mensaje de error, o `null` si el valor es válido, con los mismos
-/// límites que las reglas de Firestore.
+/// Problemas de lo que el administrador escribe en el formulario de recurso (design.md §11). La
+/// presentación los traduce (design.md §14).
+enum ResourceInputIssue { nameMissing, nameTooLong, descriptionTooLong }
+
+/// Problemas del horario de un día.
+enum DayRangesIssue { notARange, invalidTime, endBeforeStart, overlap }
+
+/// Horario de un día mal escrito; [text] es el trozo que falla (para `notARange`).
+class DayRangesException implements Exception {
+  const DayRangesException(this.issue, [this.text = '']);
+
+  final DayRangesIssue issue;
+  final String text;
+
+  @override
+  String toString() => 'DayRangesException(${issue.name}, $text)';
+}
+
+/// Validación del formulario de recurso: funciones puras, con los mismos límites que las reglas
+/// de Firestore. Devuelven el problema, o `null` si el valor es válido.
 abstract final class ResourceInput {
   static const maxNameLength = 60;
   static const maxDescriptionLength = 300;
@@ -11,38 +28,33 @@ abstract final class ResourceInput {
   /// Duraciones de turno que ofrece el formulario, en minutos.
   static const slotMinutesOptions = [15, 30, 45, 60, 90, 120];
 
-  static String? name(String? value) {
+  static ResourceInputIssue? name(String? value) {
     final text = value?.trim() ?? '';
-    if (text.isEmpty) return 'Escribe un nombre.';
-    if (text.length > maxNameLength) {
-      return 'Usa como máximo $maxNameLength caracteres.';
-    }
+    if (text.isEmpty) return ResourceInputIssue.nameMissing;
+    if (text.length > maxNameLength) return ResourceInputIssue.nameTooLong;
     return null;
   }
 
-  static String? description(String? value) {
-    if ((value?.trim().length ?? 0) > maxDescriptionLength) {
-      return 'Usa como máximo $maxDescriptionLength caracteres.';
-    }
-    return null;
-  }
+  static ResourceInputIssue? description(String? value) =>
+      (value?.trim().length ?? 0) > maxDescriptionLength
+          ? ResourceInputIssue.descriptionTooLong
+          : null;
 
-  /// Mensaje de error del horario de un día, o `null` si [parseDayRanges] lo acepta.
-  static String? dayRanges(String? value) {
+  /// El problema del horario de un día, o `null` si [parseDayRanges] lo acepta.
+  static DayRangesException? dayRanges(String? value) {
     try {
       parseDayRanges(value ?? '');
       return null;
-    } on FormatException catch (error) {
-      return error.message;
+    } on DayRangesException catch (error) {
+      return error;
     }
   }
 }
 
-final _range = RegExp(r'^([0-2]?\d:[0-5]\d)\s*[-–]\s*([0-2]?\d:[0-5]\d)$');
+final _range = RegExp(r'^(\d{1,2}):(\d{2})\s*[-–]\s*(\d{1,2}):(\d{2})$');
 
 /// Lee el horario de un día escrito como «09:00-13:00, 15:00-19:00»; vacío es cerrado. Los
-/// intervalos deben estar en orden y sin solaparse. Lanza `FormatException` con un mensaje para
-/// mostrar en el campo.
+/// intervalos deben estar en orden y sin solaparse. Lanza [DayRangesException].
 List<TimeRange> parseDayRanges(String text) {
   final trimmed = text.trim();
   if (trimmed.isEmpty) return const [];
@@ -51,16 +63,20 @@ List<TimeRange> parseDayRanges(String text) {
   for (final part in trimmed.split(',')) {
     final match = _range.firstMatch(part.trim());
     if (match == null) {
-      throw FormatException(
-        '«${part.trim()}» no es un intervalo; escribe por ejemplo 09:00-13:00.',
-      );
+      throw DayRangesException(DayRangesIssue.notARange, part.trim());
     }
-    // TimeRange.parse rechaza horas imposibles y un fin que no es posterior al inicio.
-    final range = TimeRange.parse(_pad(match.group(1)!), _pad(match.group(2)!));
+    final [startH, startM, endH, endM] = [
+      for (var group = 1; group <= 4; group++) int.parse(match.group(group)!),
+    ];
+    if (startH > 23 || endH > 23 || startM > 59 || endM > 59) {
+      throw const DayRangesException(DayRangesIssue.invalidTime);
+    }
+    final range = TimeRange(startH * 60 + startM, endH * 60 + endM);
+    if (range.endMinutes <= range.startMinutes) {
+      throw const DayRangesException(DayRangesIssue.endBeforeStart);
+    }
     if (ranges.isNotEmpty && range.startMinutes < ranges.last.endMinutes) {
-      throw const FormatException(
-        'Los intervalos deben ir en orden y sin solaparse.',
-      );
+      throw const DayRangesException(DayRangesIssue.overlap);
     }
     ranges.add(range);
   }
@@ -74,6 +90,3 @@ String formatDayRanges(List<TimeRange> ranges) => ranges
           '${ScheduleFormat.time(r.startMinutes)}-${ScheduleFormat.time(r.endMinutes)}',
     )
     .join(', ');
-
-/// «9:00» → «09:00». Una hora como «25:00» sigue siendo inválida y la rechaza [TimeRange.parse].
-String _pad(String time) => time.length == 4 ? '0$time' : time;

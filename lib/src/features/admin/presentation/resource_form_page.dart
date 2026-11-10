@@ -2,10 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/l10n/l10n.dart';
+import '../../../core/l10n/schedule_labels.dart';
 import '../../../routing/session_redirect.dart';
 import '../../resources/application/resource_providers.dart';
 import '../../resources/domain/resource.dart';
-import '../../resources/domain/schedule_format.dart';
 import '../../resources/domain/slot_calculator.dart';
 import '../application/admin_providers.dart';
 import '../domain/resource_input.dart';
@@ -19,23 +20,22 @@ class ResourceFormPage extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final id = resourceId;
+    final l10n = context.l10n;
     return Scaffold(
       appBar: AppBar(
-        title: Text(id == null ? 'Nuevo recurso' : 'Editar recurso'),
+        title: Text(id == null ? l10n.newResource : l10n.editResource),
       ),
       body: id == null
           ? const _ResourceForm(initial: null)
           : ref.watch(resourceProvider(id)).when(
-                loading: () => const Center(
+                loading: () => Center(
                   child: CircularProgressIndicator(
-                    semanticsLabel: 'Cargando recurso',
+                    semanticsLabel: l10n.resourceLoading,
                   ),
                 ),
-                error: (_, __) => const _Message(
-                  'No se pudo cargar el recurso. Revisa tu conexión.',
-                ),
+                error: (_, __) => _Message(l10n.resourceLoadError),
                 data: (resource) => resource == null
-                    ? const _Message('Ese recurso no existe.')
+                    ? _Message(l10n.resourceNotFound)
                     : _ResourceForm(initial: resource),
               ),
     );
@@ -70,7 +70,7 @@ class _ResourceFormState extends ConsumerState<_ResourceForm> {
     _name = TextEditingController(text: initial?.name);
     _description = TextEditingController(text: initial?.description);
     _schedule = {
-      for (final weekday in ScheduleFormat.weekdayNames.keys)
+      for (final weekday in ScheduleLabels.weekdays)
         weekday: TextEditingController(
           text: formatDayRanges(initial?.weeklySchedule[weekday] ?? const []),
         ),
@@ -103,7 +103,7 @@ class _ResourceFormState extends ConsumerState<_ResourceForm> {
       context: context,
       firstDate: DateTime(today.year, today.month, today.day),
       lastDate: DateTime(today.year + 2, today.month, today.day),
-      helpText: 'Día sin atención',
+      helpText: context.l10n.blockedDatePickerHelp,
     );
     if (picked != null) setState(() => _blockedDates.add(dateKey(picked)));
   }
@@ -129,6 +129,7 @@ class _ResourceFormState extends ConsumerState<_ResourceForm> {
     );
 
     setState(() => _saving = true);
+    final l10n = context.l10n;
     final messenger = ScaffoldMessenger.of(context);
     try {
       final editor = ref.read(resourceEditorProvider);
@@ -138,16 +139,12 @@ class _ResourceFormState extends ConsumerState<_ResourceForm> {
         await editor.update(resource);
       }
       messenger.showSnackBar(
-        SnackBar(content: Text('Recurso guardado: ${resource.name}.')),
+        SnackBar(content: Text(l10n.resourceSaved(resource.name))),
       );
       if (mounted) context.go(AppRoutes.admin);
     } on Exception {
       messenger.showSnackBar(
-        const SnackBar(
-          content: Text(
-            'No se pudo guardar el recurso. Revisa tu conexión e inténtalo de nuevo.',
-          ),
-        ),
+        SnackBar(content: Text(l10n.resourceSaveError)),
       );
       if (mounted) setState(() => _saving = false);
     }
@@ -156,6 +153,8 @@ class _ResourceFormState extends ConsumerState<_ResourceForm> {
   @override
   Widget build(BuildContext context) {
     final textTheme = Theme.of(context).textTheme;
+    final l10n = context.l10n;
+    final labels = ScheduleLabels(l10n);
     final blocked = _blockedDates.toList()..sort();
 
     return Form(
@@ -165,26 +164,28 @@ class _ResourceFormState extends ConsumerState<_ResourceForm> {
         children: [
           TextFormField(
             controller: _name,
-            decoration: const InputDecoration(labelText: 'Nombre'),
+            decoration: InputDecoration(labelText: l10n.nameLabel),
             maxLength: ResourceInput.maxNameLength,
-            validator: ResourceInput.name,
+            validator: (value) =>
+                l10n.resourceInputIssue(ResourceInput.name(value)),
           ),
           TextFormField(
             controller: _description,
-            decoration: const InputDecoration(labelText: 'Descripción'),
+            decoration: InputDecoration(labelText: l10n.descriptionLabel),
             maxLength: ResourceInput.maxDescriptionLength,
             maxLines: 3,
-            validator: ResourceInput.description,
+            validator: (value) =>
+                l10n.resourceInputIssue(ResourceInput.description(value)),
           ),
           const SizedBox(height: 8),
           DropdownButtonFormField<int>(
             initialValue: _slotMinutes,
-            decoration: const InputDecoration(labelText: 'Duración del turno'),
+            decoration: InputDecoration(labelText: l10n.slotDurationLabel),
             items: [
               for (final minutes in _durations)
                 DropdownMenuItem(
                   value: minutes,
-                  child: Text(ScheduleFormat.slotDuration(minutes)),
+                  child: Text(labels.slotDuration(minutes)),
                 ),
             ],
             onChanged: (value) => setState(() => _slotMinutes = value!),
@@ -192,20 +193,18 @@ class _ResourceFormState extends ConsumerState<_ResourceForm> {
           const SizedBox(height: 8),
           SwitchListTile(
             contentPadding: EdgeInsets.zero,
-            title: const Text('Activo'),
+            title: Text(l10n.activeSwitch),
             subtitle: Text(
-              _active
-                  ? 'Aparece en el catálogo.'
-                  : 'No aparece en el catálogo; sus reservas se conservan.',
+              _active ? l10n.activeOn : l10n.activeOff,
             ),
             value: _active,
             onChanged: (value) => setState(() => _active = value),
           ),
           const SizedBox(height: 16),
-          Text('Horario semanal', style: textTheme.titleMedium),
+          Text(l10n.weeklyScheduleTitle, style: textTheme.titleMedium),
           const SizedBox(height: 4),
           Text(
-            'Por ejemplo 09:00-13:00, 15:00-19:00. Vacío = cerrado.',
+            l10n.weeklyScheduleHelp,
             style: textTheme.bodySmall,
           ),
           for (final MapEntry(key: weekday, value: controller)
@@ -213,24 +212,26 @@ class _ResourceFormState extends ConsumerState<_ResourceForm> {
             TextFormField(
               controller: controller,
               decoration: InputDecoration(
-                labelText: ScheduleFormat.weekdayNames[weekday],
-                hintText: 'Cerrado',
+                labelText: labels.weekdayName(weekday),
+                hintText: l10n.closed,
               ),
-              validator: ResourceInput.dayRanges,
+              validator: (value) =>
+                  l10n.dayRangesIssue(ResourceInput.dayRanges(value)),
             ),
           const SizedBox(height: 24),
-          Text('Días bloqueados', style: textTheme.titleMedium),
+          Text(l10n.blockedDatesTitle, style: textTheme.titleMedium),
           const SizedBox(height: 8),
-          if (blocked.isEmpty) const Text('Ninguno.'),
+          if (blocked.isEmpty) Text(l10n.noBlockedDates),
           Wrap(
             spacing: 8,
             runSpacing: 8,
             children: [
               for (final key in blocked)
                 InputChip(
-                  label: Text(ScheduleFormat.longDate(DateTime.parse(key))),
-                  deleteButtonTooltipMessage:
-                      'Quitar ${ScheduleFormat.longDate(DateTime.parse(key))}',
+                  label: Text(labels.longDate(DateTime.parse(key))),
+                  deleteButtonTooltipMessage: l10n.removeBlockedDate(
+                    labels.longDate(DateTime.parse(key)),
+                  ),
                   onDeleted: () => setState(() => _blockedDates.remove(key)),
                 ),
             ],
@@ -241,13 +242,13 @@ class _ResourceFormState extends ConsumerState<_ResourceForm> {
             child: OutlinedButton.icon(
               onPressed: _addBlockedDate,
               icon: const Icon(Icons.event_busy),
-              label: const Text('Agregar día bloqueado'),
+              label: Text(l10n.addBlockedDate),
             ),
           ),
           const SizedBox(height: 24),
           FilledButton(
             onPressed: _saving ? null : _save,
-            child: Text(_saving ? 'Guardando…' : 'Guardar'),
+            child: Text(_saving ? l10n.saving : l10n.save),
           ),
         ],
       ),

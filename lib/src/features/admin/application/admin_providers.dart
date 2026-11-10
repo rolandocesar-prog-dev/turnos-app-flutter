@@ -51,7 +51,7 @@ class AdminBookingController extends AsyncNotifier<void> {
     state = const AsyncLoading();
     final result = await AsyncValue.guard(() async {
       final text = reason.trim();
-      if (cancelReasonError(text) != null) {
+      if (cancelReasonIssue(text) != null) {
         throw const BookingFailure(BookingFailureReason.invalidReason);
       }
       if (!canAdminCancel(booking, ref.read(clockProvider)())) {

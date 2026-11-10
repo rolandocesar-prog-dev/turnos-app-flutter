@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/l10n/l10n.dart';
+import '../../../core/l10n/schedule_labels.dart';
 import '../application/resource_providers.dart';
 import '../domain/resource.dart';
-import '../domain/schedule_format.dart';
 import 'slots_section.dart';
 
 /// Detalle de un recurso: descripción, duración del turno y horario semanal (RF-02).
@@ -14,18 +15,20 @@ class ResourceDetailPage extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = context.l10n;
     final resource = ref.watch(resourceProvider(resourceId));
 
     return Scaffold(
-      appBar: AppBar(title: Text(resource.value?.name ?? 'Recurso')),
+      appBar: AppBar(
+        title: Text(resource.value?.name ?? l10n.resourceFallbackTitle),
+      ),
       body: resource.when(
-        loading: () => const Center(
-          child: CircularProgressIndicator(semanticsLabel: 'Cargando'),
+        loading: () => Center(
+          child: CircularProgressIndicator(semanticsLabel: l10n.loading),
         ),
-        error: (_, __) =>
-            const Center(child: Text('No se pudo cargar este lugar.')),
+        error: (_, __) => Center(child: Text(l10n.resourceError)),
         data: (value) => value == null || !value.active
-            ? const Center(child: Text('Este lugar ya no está disponible.'))
+            ? Center(child: Text(l10n.resourceUnavailable))
             : _Detail(value),
       ),
     );
@@ -39,6 +42,8 @@ class _Detail extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    final labels = ScheduleLabels(l10n);
     final textTheme = Theme.of(context).textTheme;
     return ListView(
       padding: const EdgeInsets.all(16),
@@ -46,26 +51,23 @@ class _Detail extends StatelessWidget {
         Text(resource.description, style: textTheme.bodyLarge),
         const SizedBox(height: 8),
         Text(
-          ScheduleFormat.slotDuration(resource.slotMinutes),
+          labels.slotDuration(resource.slotMinutes),
           style: textTheme.labelLarge,
         ),
         const SizedBox(height: 24),
         SlotsSection(resource: resource),
         const SizedBox(height: 24),
-        Text('Horario', style: textTheme.titleMedium),
+        Text(l10n.scheduleTitle, style: textTheme.titleMedium),
         const SizedBox(height: 8),
-        for (final MapEntry(key: weekday, value: name)
-            in ScheduleFormat.weekdayNames.entries)
+        for (final weekday in ScheduleLabels.weekdays)
           Padding(
             padding: const EdgeInsets.symmetric(vertical: 4),
-            child: Row(
+            // Con texto grande, el día y su horario pasan a ocupar dos líneas.
+            child: Wrap(
+              spacing: 12,
               children: [
-                SizedBox(width: 110, child: Text(name)),
-                Expanded(
-                  child: Text(
-                    ScheduleFormat.ranges(resource.weeklySchedule[weekday]),
-                  ),
-                ),
+                SizedBox(width: 110, child: Text(labels.weekdayName(weekday))),
+                Text(labels.ranges(resource.weeklySchedule[weekday])),
               ],
             ),
           ),

@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/l10n/l10n.dart';
+import '../../../core/l10n/schedule_labels.dart';
 import '../../notifications/presentation/push_card.dart';
 import '../../resources/application/resource_providers.dart';
-import '../../resources/domain/schedule_format.dart';
 import '../application/booking_providers.dart';
 import '../domain/booking.dart';
 import '../domain/booking_failure.dart';
@@ -16,22 +17,20 @@ class MyBookingsPage extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final bookings = ref.watch(myBookingsProvider);
     final now = ref.watch(clockProvider)();
+    final l10n = context.l10n;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Mis reservas')),
+      appBar: AppBar(title: Text(l10n.myBookingsTitle)),
       body: bookings.when(
-        loading: () => const Center(
+        loading: () => Center(
           child: CircularProgressIndicator(
-            semanticsLabel: 'Cargando tus reservas',
+            semanticsLabel: l10n.myBookingsLoading,
           ),
         ),
-        error: (_, __) => const Center(
+        error: (_, __) => Center(
           child: Padding(
-            padding: EdgeInsets.all(24),
-            child: Text(
-              'No se pudieron cargar tus reservas. Revisa tu conexión.',
-              textAlign: TextAlign.center,
-            ),
+            padding: const EdgeInsets.all(24),
+            child: Text(l10n.myBookingsError, textAlign: TextAlign.center),
           ),
         ),
         data: (items) => _BookingList(items, now),
@@ -58,18 +57,19 @@ class _BookingList extends ConsumerWidget {
     ]..sort((a, b) => b.startAt.compareTo(a.startAt));
     final busy = ref.watch(bookingControllerProvider).isLoading;
     final textTheme = Theme.of(context).textTheme;
+    final l10n = context.l10n;
 
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
         const PushCard(),
         const SizedBox(height: 8),
-        Text('Próximas', style: textTheme.titleMedium),
+        Text(l10n.upcomingTitle, style: textTheme.titleMedium),
         const SizedBox(height: 8),
         if (upcoming.isEmpty)
-          const Padding(
-            padding: EdgeInsets.symmetric(vertical: 8),
-            child: Text('No tienes reservas próximas.'),
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 8),
+            child: Text(l10n.noUpcoming),
           ),
         for (final booking in upcoming)
           _BookingCard(
@@ -81,7 +81,7 @@ class _BookingList extends ConsumerWidget {
           ),
         if (history.isNotEmpty) ...[
           const SizedBox(height: 24),
-          Text('Anteriores', style: textTheme.titleMedium),
+          Text(l10n.historyTitle, style: textTheme.titleMedium),
           const SizedBox(height: 8),
           for (final booking in history) _BookingCard(booking, now: now),
         ],
@@ -95,19 +95,21 @@ class _BookingList extends ConsumerWidget {
     WidgetRef ref,
     Booking booking,
   ) async {
+    final l10n = context.l10n;
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('¿Cancelar esta reserva?'),
-        content: Text('${booking.resourceName}\n${_when(booking, now)}'),
+        title: Text(l10n.cancelDialogTitle),
+        content:
+            Text('${booking.resourceName}\n${_when(context, booking, now)}'),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Volver'),
+            child: Text(l10n.back),
           ),
           FilledButton(
             onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('Cancelar reserva'),
+            child: Text(l10n.cancelBookingButton),
           ),
         ],
       ),
@@ -117,9 +119,8 @@ class _BookingList extends ConsumerWidget {
     await ref.read(bookingControllerProvider.notifier).cancel(booking);
     if (!context.mounted) return;
     final message = switch (ref.read(bookingControllerProvider)) {
-      AsyncError(error: final BookingFailure failure) => failure.message,
-      AsyncError() => BookingFailureReason.unknown.message,
-      _ => 'Reserva cancelada. El horario quedó libre.',
+      AsyncError(:final error) => l10n.bookingError(error),
+      _ => l10n.cancelledMessage,
     };
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
@@ -128,9 +129,9 @@ class _BookingList extends ConsumerWidget {
 }
 
 /// «mié 11 nov, 09:00–10:00».
-String _when(Booking booking, DateTime now) =>
-    '${ScheduleFormat.dateLabel(booking.startAt, now)}, '
-    '${ScheduleFormat.clock(booking.startAt)}–${ScheduleFormat.clock(booking.endAt)}';
+String _when(BuildContext context, Booking booking, DateTime now) =>
+    ScheduleLabels.of(context)
+        .dateAndRange(booking.startAt, booking.endAt, now);
 
 class _BookingCard extends StatelessWidget {
   const _BookingCard(this.booking, {required this.now, this.onCancel});
@@ -143,12 +144,13 @@ class _BookingCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
     final upcoming = booking.isUpcoming(now);
     final note = switch (booking.status) {
-      BookingStatus.cancelled => booking.cancellationLabel,
-      BookingStatus.active when !upcoming => 'Ya pasó',
+      BookingStatus.cancelled => l10n.cancellation(booking),
+      BookingStatus.active when !upcoming => l10n.statusPast,
       BookingStatus.active when !canCancel(booking, now) =>
-        BookingFailureReason.tooLateToCancel.message,
+        l10n.bookingFailure(BookingFailureReason.tooLateToCancel),
       BookingStatus.active => null,
     };
 
@@ -163,12 +165,12 @@ class _BookingCard extends StatelessWidget {
         ),
         title: Text(booking.resourceName),
         subtitle: Text(
-          [_when(booking, now), if (note != null) note].join('\n'),
+          [_when(context, booking, now), if (note != null) note].join('\n'),
         ),
         isThreeLine: note != null,
         trailing: onCancel == null
             ? null
-            : TextButton(onPressed: onCancel, child: const Text('Cancelar')),
+            : TextButton(onPressed: onCancel, child: Text(l10n.cancel)),
       ),
     );
   }

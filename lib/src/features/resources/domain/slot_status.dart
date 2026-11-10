@@ -1,15 +1,8 @@
 import 'slot_calculator.dart';
 
-/// Estado de una franja para quien la mira (RF-02, design.md §9).
-enum SlotStatus {
-  available('disponible'),
-  taken('ocupada'),
-  past('ya pasó');
-
-  const SlotStatus(this.label);
-
-  final String label;
-}
+/// Estado de una franja para quien la mira (RF-02, design.md §9). El texto lo pone la
+/// presentación (design.md §14).
+enum SlotStatus { available, taken, past }
 
 /// Una franja con su estado.
 typedef SlotView = ({Slot slot, SlotStatus status});
