@@ -249,3 +249,38 @@ desactivadas, así no hace falta el SDK de administración.
     mañana, que siempre está a más de 2 horas, así que se puede cancelar a cualquier hora.
   - Control: quitando el borrado de la franja al cancelar, las reglas rechazan la cancelación y la
     prueba falla.
+
+## 11. Administración (RF-06, M4)
+
+Se hace antes que el proyecto real de Firebase: todo funciona contra los emuladores.
+
+- **Quién es administrador**: el rol de `users/{uid}` (§4). Nadie se lo da desde la app; en
+  desarrollo, `npm run seed` crea en el emulador de Auth la cuenta `admin@turnos.test` con perfil
+  `admin` (contraseña de prueba en el README; solo existe en los emuladores).
+- **Rol en la app**: `UserProfileRepository.watchRole(uid)` publica el rol en tiempo real
+  (`currentRoleProvider`); sin perfil, el rol es `client`. Un administrador ve en el catálogo el
+  ícono «Administración».
+- **Rutas**: `/admin` (recursos, activos e inactivos), `/admin/recursos/nuevo`,
+  `/admin/recursos/:id` y `/admin/reservas`. Una función pura (`adminRedirect`) manda al inicio a
+  quien no es administrador; mientras el rol carga, la página espera. Las reglas son el control
+  real: la redirección solo evita mostrar pantallas que fallarían.
+- **Reglas**:
+  - `resources`: el administrador crea y edita con **validación** (solo los campos del modelo;
+    `name` de 1 a 60 caracteres; `description` hasta 300; `slotMinutes` entero de 5 a 240;
+    `active` booleano; `weeklySchedule` mapa; `blockedDates` lista). Un recurso **no se borra**: se
+    desactiva (`active: false`), así las reservas que lo nombran siguen teniendo sentido.
+  - `users`: el administrador puede leer los perfiles, para saber de quién es cada reserva.
+  - `bookings`: el administrador lee todas y cancela una activa que **todavía no empezó**, sin el
+    plazo de 2 horas, con `cancelReason` obligatorio (de 3 a 200 caracteres), en el mismo lote que
+    borra su franja. El cliente no puede escribir `cancelReason`.
+- **Formulario de recurso**: nombre, descripción, duración del turno (15, 30, 45, 60, 90 o 120
+  minutos), activo, horario y días bloqueados. El horario de cada día se escribe como texto
+  («09:00-13:00, 15:00-19:00»; vacío = cerrado) y lo valida una función pura del dominio
+  (`parseDayRanges`: formato, fin después del inicio, intervalos en orden y sin solaparse), con
+  mensajes por campo. Los días bloqueados se agregan con un selector de fecha y se quitan desde su
+  chip. Un recurso nuevo recibe un id generado.
+- **Reservas del día**: consulta por rango de `startAt` del día elegido (índice simple), en tiempo
+  real, con flechas para el día anterior y el siguiente. Cada reserva muestra hora, recurso,
+  cliente (correo del perfil) y estado. Cancelar pide el motivo; el cliente lo ve en «Mis
+  reservas» («Cancelada por el negocio: …»). La notificación push al cliente llega con FCM (M4,
+  proyecto real).

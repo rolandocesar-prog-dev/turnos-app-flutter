@@ -40,12 +40,20 @@ Cada tarea referencia su requisito. Marca `[x]` al terminar y haz un commit por 
 
 ## M4 · Notificaciones y administración (RF-05, RF-06)
 
+El panel de administración va primero porque se hace entero contra los emuladores; el resto
+necesita el proyecto real de Firebase.
+
+- [ ] Reglas de administración (recursos validados, reservas de todos, cancelar con motivo) con sus
+      pruebas, y cuenta de administrador en los datos de ejemplo (RNF-01, design.md §11).
+- [ ] Rol en la app: ruta `/admin` solo para administradores y lista de todos los recursos.
+- [ ] Crear, editar y desactivar recursos, con horario semanal y días bloqueados (RF-06).
+- [ ] Reservas del día y cancelación con motivo, visible para el cliente (RF-06).
 - [ ] Proyecto real de Firebase y `flutterfire configure` (lo necesitan FCM, Cloud Functions y
       Hosting; design.md §6).
 - [ ] FCM: registro de tokens por usuario.
 - [ ] Cloud Function programada: recordatorio 1 h antes.
 - [ ] Límite de 3 reservas activas también en el servidor (Cloud Functions; design.md §10).
-- [ ] Panel de administración: recursos, horarios, días bloqueados y reservas del día.
+- [ ] Notificación al cliente cuando el administrador cancela su reserva (RF-05).
 
 ## M5 · Entrega
 
