@@ -22,6 +22,8 @@ node_modules/
 
 # Entorno local
 .env
+# Parámetros de las funciones: no son secretos y el despliegue los necesita (design.md §12).
+!functions/.env
 
 # Editor / SO
 .idea/
