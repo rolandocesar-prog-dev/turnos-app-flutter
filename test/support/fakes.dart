@@ -115,9 +115,11 @@ Booking testBooking(
   Resource resource = testConsultorio,
   BookingStatus status = BookingStatus.active,
   String? cancelReason,
+  bool cancelledBySystem = false,
 }) =>
     Booking(
       cancelReason: cancelReason,
+      cancelledBySystem: cancelledBySystem,
       id: id,
       resourceId: resource.id,
       resourceName: resource.name,

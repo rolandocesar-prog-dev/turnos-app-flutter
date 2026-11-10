@@ -392,6 +392,15 @@ void main() {
     });
 
     testWidgets('el cliente ve el motivo en Mis reservas', (tester) async {
+      bookings.add(
+        testBooking(
+          'b5',
+          today.add(const Duration(days: 2, hours: 9)),
+          status: BookingStatus.cancelled,
+          cancelReason: 'Superaste el límite de 3 reservas activas.',
+          cancelledBySystem: true,
+        ),
+      );
       await signIn(tester, client);
 
       await tester.tap(find.byTooltip('Mis reservas'));
@@ -399,6 +408,12 @@ void main() {
 
       expect(
         find.textContaining('Cancelada por el negocio: Lluvia'),
+        findsOneWidget,
+      );
+      expect(
+        find.textContaining(
+          'Cancelada automáticamente: Superaste el límite de 3 reservas activas.',
+        ),
         findsOneWidget,
       );
     });

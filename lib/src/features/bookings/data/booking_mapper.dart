@@ -51,5 +51,6 @@ Booking bookingFromFirestore(String id, Map<String, dynamic> data) {
       final String reason => reason,
       _ => throw FormatException('bookings/$id: «cancelReason» no es String'),
     },
+    cancelledBySystem: data['cancelledBy'] == 'system',
   );
 }

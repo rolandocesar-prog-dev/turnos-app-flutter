@@ -108,10 +108,10 @@ class _AdminBookingCard extends ConsumerWidget {
       _ => 'Cliente sin datos',
     };
     final status = switch (booking.status) {
-      BookingStatus.cancelled => switch (booking.cancelReason) {
-          final String reason => 'Cancelada por el negocio: $reason',
-          null => 'Cancelada por el cliente',
-        },
+      BookingStatus.cancelled =>
+        booking.cancelReason == null && !booking.cancelledBySystem
+            ? 'Cancelada por el cliente'
+            : booking.cancellationLabel,
       BookingStatus.active when !cancellable => 'Ya empezó',
       BookingStatus.active => 'Activa',
     };

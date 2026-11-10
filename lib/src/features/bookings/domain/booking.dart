@@ -13,6 +13,7 @@ class Booking {
     required this.endAt,
     required this.status,
     this.cancelReason,
+    this.cancelledBySystem = false,
   });
 
   final String id;
@@ -26,8 +27,20 @@ class Booking {
   final DateTime endAt;
   final BookingStatus status;
 
-  /// Motivo, cuando la canceló el administrador (RF-06); el cliente cancela sin motivo.
+  /// Motivo, cuando la canceló el administrador (RF-06) o el servidor; el cliente cancela sin
+  /// motivo.
   final String? cancelReason;
+
+  /// La canceló el servidor por superar el límite de reservas (design.md §12).
+  final bool cancelledBySystem;
+
+  /// Texto del estado de una reserva cancelada, para el cliente y el administrador.
+  String get cancellationLabel => switch ((cancelledBySystem, cancelReason)) {
+        (true, final reason) => 'Cancelada automáticamente: '
+            '${reason ?? 'superaste el límite de reservas.'}',
+        (false, final String reason) => 'Cancelada por el negocio: $reason',
+        (false, null) => 'Cancelada',
+      };
 
   /// Reserva activa que todavía no empezó.
   bool isUpcoming(DateTime now) =>

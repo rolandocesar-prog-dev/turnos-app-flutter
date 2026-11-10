@@ -94,6 +94,32 @@ void main() {
       );
     });
 
+    test('distingue quién canceló (design.md §12)', () {
+      String label(Map<String, dynamic> extra) => bookingFromFirestore(
+            'b',
+            data(status: 'cancelled')..addAll(extra),
+          ).cancellationLabel;
+
+      expect(label({}), 'Cancelada');
+      expect(
+        label({'cancelReason': 'Lluvia'}),
+        'Cancelada por el negocio: Lluvia',
+      );
+      expect(
+        label({'cancelledBy': 'system', 'cancelReason': 'Límite.'}),
+        'Cancelada automáticamente: Límite.',
+      );
+      expect(
+        label({'cancelledBy': 'system'}),
+        'Cancelada automáticamente: superaste el límite de reservas.',
+      );
+      expect(
+        bookingFromFirestore('b', data()..['cancelledBy'] = 'otro')
+            .cancelledBySystem,
+        isFalse,
+      );
+    });
+
     test('omite las mal formadas y ordena el resto por inicio', () {
       final errors = <FormatException>[];
       final later = data()
