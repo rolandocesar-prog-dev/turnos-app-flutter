@@ -8,7 +8,8 @@
     "test:rules": "firebase emulators:exec --only firestore --project demo-turnos \"node --test rules-tests/*.test.mjs\"",
     "test:e2e": "firebase emulators:exec --only auth,firestore --project demo-turnos \"node scripts/e2e.mjs\"",
     "test:functions": "npm --prefix functions run build && firebase emulators:exec --only functions,firestore --project demo-turnos \"npm --prefix functions run test:emulator\"",
-    "deploy:firestore": "firebase deploy --only firestore --project turnos-rv-portafolio"
+    "deploy:firestore": "firebase deploy --only firestore --project turnos-rv-portafolio",
+    "deploy:hosting": "firebase deploy --only hosting --project turnos-rv-portafolio"
   },
   "devDependencies": {
     "@firebase/rules-unit-testing": "^5.0.2",

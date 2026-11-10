@@ -143,6 +143,10 @@ desactivadas, así no hace falta el SDK de administración.
     apunte a los emuladores. Las rutas usan `#`, pero igual toda ruta desconocida sirve
     `index.html`; los archivos de Flutter no llevan hash en el nombre, así que se sirven con
     `Cache-Control: no-cache` (el navegador revalida con ETag y no queda una versión vieja).
+  - En el proyecto real, Google todavía no está activado como método de acceso: el botón
+    «Continuar con Google» solo aparece con los emuladores o si se compila con
+    `--dart-define=GOOGLE_SIGN_IN=true` (hallado al revisar el sitio publicado: fallaba con un
+    error genérico).
 - La app elige el entorno con `--dart-define=FIREBASE_ENV=…`: `emulators` (por defecto, con las
   opciones de `demo-turnos`: clave y app ficticias, que los emuladores aceptan, en
   `lib/src/core/firebase/`) o `production` (las opciones de `firebase_options.dart`, sin

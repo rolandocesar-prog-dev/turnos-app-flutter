@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:turnos_app/firebase_options.dart';
+import 'package:turnos_app/src/features/auth/application/auth_providers.dart';
 import 'package:turnos_app/src/core/firebase/firebase_setup.dart';
 
 void main() {
@@ -51,6 +52,21 @@ void main() {
     );
     expect(() => parseFirebaseEnvironment('prod'), throwsUnsupportedError);
     expect(() => parseFirebaseEnvironment(''), throwsUnsupportedError);
+  });
+
+  test('Google: en web con los emuladores; en producción solo si se activó',
+      () {
+    bool available(bool web, FirebaseEnvironment env, bool enabled) =>
+        googleSignInAvailableFor(
+          isWeb: web,
+          environment: env,
+          enabledInProduction: enabled,
+        );
+
+    expect(available(true, FirebaseEnvironment.emulators, false), isTrue);
+    expect(available(true, FirebaseEnvironment.production, false), isFalse);
+    expect(available(true, FirebaseEnvironment.production, true), isTrue);
+    expect(available(false, FirebaseEnvironment.emulators, true), isFalse);
   });
 
   test('las opciones del proyecto real apuntan a turnos-rv-portafolio', () {

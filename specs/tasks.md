@@ -67,7 +67,7 @@ necesita el proyecto real de Firebase.
       (RNF-06, design.md §14).
 - [x] Pruebas de accesibilidad de las pantallas principales: contraste, áreas táctiles, botones
       con nombre (tema claro y oscuro) y texto al 200 % (RNF-03, design.md §14).
-- [ ] Versión web desplegada en Firebase Hosting, siempre compilada para `production`
+- [x] Versión web desplegada en Firebase Hosting, siempre compilada para `production`
       (design.md §6).
 - [ ] Publicación en prueba interna de Google Play o TestFlight.
 - [ ] README final con capturas, GIF y arquitectura.

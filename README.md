@@ -6,6 +6,8 @@ App para que canchas, consultorios y otros negocios con agenda publiquen sus hor
 clientes reserven, cancelen y reciban recordatorios, **sin reservas duplicadas**.
 
 > 🚧 Proyecto en desarrollo. El avance está en [`specs/tasks.md`](./specs/tasks.md).
+>
+> **Versión web:** https://turnos-rv-portafolio.web.app
 
 ## Qué demuestra
 
@@ -59,6 +61,13 @@ fvm flutter run -d chrome --dart-define=FIREBASE_ENV=production
 
 Las opciones de `lib/firebase_options.dart` no son secretas (identifican el proyecto); los datos
 los protegen las reglas de seguridad, que se publican con `npm run deploy:firestore`.
+
+La versión web se publica en Firebase Hosting; el despliegue compila antes para `production`
+(en PowerShell: `$env:FLUTTER = "fvm flutter"`):
+
+```bash
+FLUTTER="fvm flutter" npm run deploy:hosting
+```
 
 En el proyecto real nadie es administrador al empezar: crea tu cuenta en la app y, en la consola de
 Firebase, cambia `role` a `"admin"` en tu documento `users/{uid}`. Desde el panel de
