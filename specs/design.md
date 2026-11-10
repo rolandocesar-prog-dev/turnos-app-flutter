@@ -123,11 +123,23 @@ desactivadas, así no hace falta el SDK de administración.
   proyectos `demo-*` solo existen en los emuladores: no hace falta una cuenta, no tienen costo y
   no hay riesgo de tocar datos reales. Las reglas de seguridad (RNF-01) se prueban ahí de todos
   modos.
-- **Proyecto real**: se crea en M4, cuando hacen falta FCM, Cloud Functions y Hosting, con
-  `flutterfire configure`, que genera `lib/firebase_options.dart`.
-- La app elige el entorno con `--dart-define=FIREBASE_ENV=…`; por ahora solo existe `emulators`,
-  que es el valor por defecto. Las opciones de `demo-turnos` (clave y app ficticias, que los
-  emuladores aceptan) viven en `lib/src/core/firebase/`.
+- **Proyecto real** (M4): `turnos-rv-portafolio`, en el plan gratuito Spark, con Firestore en
+  `southamerica-east1` (São Paulo, la región más cercana; no se puede cambiar). Pertenece a la
+  cuenta personal del autor, no a la de ningún cliente.
+  - `flutterfire configure --platforms=android,web` registra las apps y genera
+    `lib/firebase_options.dart` y `android/app/google-services.json`. iOS se agrega cuando haya una
+    Mac para compilarlo (M5, TestFlight).
+  - Esas opciones (clave de API, id de app) **no son secretas**: identifican el proyecto ante
+    Google y viajan dentro de toda app publicada. Lo que protege los datos son las reglas de
+    seguridad (§4). Van al repositorio para que el CI y cualquiera puedan compilar.
+  - Las Cloud Functions necesitan el plan Blaze (pago por uso): mientras el proyecto siga en
+    Spark, se desarrollan y prueban en el emulador, y se despliegan cuando se active Blaze.
+  - Las reglas y los índices se publican con `npm run deploy:firestore` (proyecto explícito en el
+    comando, para no publicar nunca en otro).
+- La app elige el entorno con `--dart-define=FIREBASE_ENV=…`: `emulators` (por defecto, con las
+  opciones de `demo-turnos`: clave y app ficticias, que los emuladores aceptan, en
+  `lib/src/core/firebase/`) o `production` (las opciones de `firebase_options.dart`, sin
+  emuladores). Un valor desconocido falla al arrancar, en vez de conectarse a un lugar inesperado.
 - Emuladores (`firebase.json`): Auth en el puerto 9099, Firestore en 8080 y la interfaz en 4000.
   La app se conecta a `localhost` (web y escritorio) o a `10.0.2.2` (emulador de Android).
 - `firebase-tools` es una dependencia de desarrollo de npm (`package.json`), así su versión queda
