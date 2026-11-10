@@ -26,9 +26,14 @@ service cloud.firestore {
         && request.resource.data.keys().hasOnly(['displayName', 'email', 'role', 'createdAt'])
         && request.resource.data.role == 'client'
         && request.resource.data.email == request.auth.token.email;
-      // Ni el rol ni el correo se cambian desde la app.
+      // Ni el rol ni el correo se cambian desde la app. Los tokens de FCM son una lista corta
+      // (design.md §13).
       allow update: if isOwner(uid)
-        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['displayName']);
+        && request.resource.data.diff(resource.data).affectedKeys()
+          .hasOnly(['displayName', 'fcmTokens'])
+        && (!('fcmTokens' in request.resource.data)
+          || (request.resource.data.fcmTokens is list
+            && request.resource.data.fcmTokens.size() <= 10));
       allow delete: if false;
     }
 

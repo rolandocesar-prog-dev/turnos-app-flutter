@@ -11,6 +11,8 @@ import {
 } from '@firebase/rules-unit-testing';
 import {
   Timestamp,
+  arrayRemove,
+  arrayUnion,
   collection,
   deleteDoc,
   doc,
@@ -107,6 +109,18 @@ describe('users/{uid}', () => {
     await assertSucceeds(updateDoc(ref, { displayName: 'Ana P.' }));
     await assertFails(updateDoc(ref, { role: 'admin' }));
     await assertFails(updateDoc(ref, { email: 'otro@ejemplo.com' }));
+  });
+
+  test('el dueño agrega y quita sus tokens de FCM (hasta 10)', async () => {
+    const ref = doc(as(ANA), 'users', ANA.uid);
+    await assertSucceeds(setDoc(ref, profile(ANA)));
+    await assertSucceeds(updateDoc(ref, { fcmTokens: arrayUnion('token-1') }));
+    await assertSucceeds(updateDoc(ref, { fcmTokens: arrayUnion('token-2') }));
+    await assertSucceeds(updateDoc(ref, { fcmTokens: arrayRemove('token-1') }));
+    const tokens = Array.from({ length: 11 }, (_, i) => `t${i}`);
+    await assertFails(updateDoc(ref, { fcmTokens: tokens }));
+    await assertFails(updateDoc(ref, { fcmTokens: 'token' }));
+    await assertFails(updateDoc(doc(as(LUIS), 'users', ANA.uid), { fcmTokens: arrayUnion('x') }));
   });
 
   test('el perfil no se borra desde la app', async () => {
