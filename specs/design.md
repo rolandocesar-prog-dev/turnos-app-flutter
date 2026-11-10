@@ -344,7 +344,12 @@ Se hace antes que el proyecto real de Firebase: todo funciona contra los emulado
   en el trabajo de reglas, que ya tiene Node y Java.
 - **Despliegue**: necesita el plan Blaze, que el usuario activó el 2026-11-10. Se despliegan con
   `npm run deploy:functions` (proyecto explícito en el comando; el `predeploy` compila el
-  TypeScript).
+  TypeScript). Los parámetros van en `functions/.env` (no son secretos): sin ellos, el despliegue
+  no interactivo falla aunque tengan valor por defecto. El primer despliegue de 2.ª generación
+  falla en los disparadores de Firestore hasta que se propagan los permisos de Eventarc (unos
+  minutos); `--force` configura además la limpieza de imágenes viejas (1 día) para no acumular
+  costo de almacenamiento. Desplegadas el 2026-11-10: `bookingLimit`, `bookingCancelledNotice` y
+  `reminders` (Cloud Scheduler cada 5 minutos, zona `America/La_Paz`).
 - **Límite de 3 reservas en el servidor** (RF-03): las reglas no pueden contar documentos (§10),
   así que un disparador `onDocumentCreated('bookings/{id}')` revisa las reservas activas futuras
   del mismo cliente después de cada reserva.
