@@ -19,7 +19,8 @@ service cloud.firestore {
     }
 
     match /users/{uid} {
-      allow read: if isOwner(uid);
+      // El administrador lee los perfiles para saber de quién es cada reserva (design.md §11).
+      allow read: if isOwner(uid) || isAdmin();
       // Nadie se crea como admin y el correo es el de su sesión.
       allow create: if isOwner(uid)
         && request.resource.data.keys().hasOnly(['displayName', 'email', 'role', 'createdAt'])
@@ -31,9 +32,29 @@ service cloud.firestore {
       allow delete: if false;
     }
 
+    // Recurso con los campos del modelo y valores razonables (design.md §3 y §11).
+    function validResource(data) {
+      return data.keys().hasOnly([
+          'name', 'description', 'photoUrl', 'slotMinutes', 'active', 'weeklySchedule',
+          'blockedDates'
+        ])
+        && data.keys().hasAll(['name', 'slotMinutes', 'active', 'weeklySchedule'])
+        && data.name is string && data.name.size() >= 1 && data.name.size() <= 60
+        && (!('description' in data) || (data.description is string
+          && data.description.size() <= 300))
+        && (!('photoUrl' in data) || data.photoUrl is string)
+        && data.slotMinutes is int && data.slotMinutes >= 5 && data.slotMinutes <= 240
+        && data.active is bool
+        && data.weeklySchedule is map
+        && data.weeklySchedule.keys().hasOnly(['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'])
+        && (!('blockedDates' in data) || data.blockedDates is list);
+    }
+
     match /resources/{resourceId} {
       allow read: if signedIn();
-      allow write: if isAdmin();
+      allow create, update: if isAdmin() && validResource(request.resource.data);
+      // No se borra: se desactiva, y las reservas que lo nombran siguen teniendo sentido.
+      allow delete: if false;
 
       // Ocupación de franjas: se lee para mostrar el estado (RF-02). Solo datos opacos.
       match /slots/{slotId} {
@@ -50,9 +71,10 @@ service cloud.firestore {
           && bookingAfter(request.resource.data.bookingId).slotId == slotId
           && bookingAfter(request.resource.data.bookingId).status == 'active';
 
-        // Cancelar (RF-04): el dueño libera su slot solo si la reserva queda cancelada.
+        // Cancelar (RF-04, RF-06): el dueño o el administrador liberan el slot solo si la reserva
+        // queda cancelada.
         allow delete: if signedIn()
-          && resource.data.uid == request.auth.uid
+          && (resource.data.uid == request.auth.uid || isAdmin())
           && bookingAfter(resource.data.bookingId).status == 'cancelled';
       }
     }
@@ -63,8 +85,9 @@ service cloud.firestore {
     }
 
     match /bookings/{bookingId} {
-      // Cada cliente lee solo sus reservas (las consultas deben filtrar por su uid).
-      allow read: if signedIn() && resource.data.uid == request.auth.uid;
+      // Cada cliente lee solo sus reservas (las consultas deben filtrar por su uid); el
+      // administrador, todas.
+      allow read: if signedIn() && (resource.data.uid == request.auth.uid || isAdmin());
 
       allow create: if isOwner(request.resource.data.uid)
         && request.resource.data.keys().hasOnly([
@@ -80,15 +103,31 @@ service cloud.firestore {
         && getAfter(/databases/$(database)/documents/resources/$(request.resource.data.resourceId)/slots/$(request.resource.data.slotId))
           .data.bookingId == bookingId;
 
-      // Cancelar con al menos 2 horas de anticipación, según la hora del servidor.
-      allow update: if isOwner(resource.data.uid)
-        && resource.data.status == 'active'
+      // Cancelar: el cliente, con al menos 2 horas de anticipación según la hora del servidor; el
+      // administrador, antes de que empiece y con un motivo. Siempre se libera la franja en el
+      // mismo lote.
+      allow update: if resource.data.status == 'active'
         && request.resource.data.status == 'cancelled'
-        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'cancelledAt'])
         && request.resource.data.cancelledAt == request.time
-        && request.time <= resource.data.startAt - duration.value(2, 'h')
-        // La franja se libera en la misma transacción.
-        && !existsAfter(/databases/$(database)/documents/resources/$(resource.data.resourceId)/slots/$(resource.data.slotId));
+        && !existsAfter(/databases/$(database)/documents/resources/$(resource.data.resourceId)/slots/$(resource.data.slotId))
+        && (clientCancel() || adminCancel());
+
+      function clientCancel() {
+        return isOwner(resource.data.uid)
+          && request.resource.data.diff(resource.data).affectedKeys()
+            .hasOnly(['status', 'cancelledAt'])
+          && request.time <= resource.data.startAt - duration.value(2, 'h');
+      }
+
+      function adminCancel() {
+        return isAdmin()
+          && request.resource.data.diff(resource.data).affectedKeys()
+            .hasOnly(['status', 'cancelledAt', 'cancelReason'])
+          && request.resource.data.cancelReason is string
+          && request.resource.data.cancelReason.size() >= 3
+          && request.resource.data.cancelReason.size() <= 200
+          && request.time < resource.data.startAt;
+      }
 
       allow delete: if false;
     }

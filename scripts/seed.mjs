@@ -1,4 +1,5 @@
-// Carga recursos de ejemplo en el emulador de Firestore en marcha (design.md §4, «Datos de ejemplo»).
+// Carga recursos de ejemplo y una cuenta de administrador en los emuladores en marcha (design.md §4,
+// «Datos de ejemplo», y §11).
 // Uso: npm run emulators (en otra terminal) y luego npm run seed.
 import { initializeTestEnvironment } from '@firebase/rules-unit-testing';
 import { doc, setDoc } from 'firebase/firestore';
@@ -40,6 +41,26 @@ const resources = {
   },
 };
 
+// Cuenta de administrador de prueba (design.md §11): solo existe en el emulador de Auth, que acepta
+// cualquier clave de API. Si ya existe, se inicia sesión para obtener su uid.
+const ADMIN = { email: 'admin@turnos.test', password: 'admin-turnos' };
+const authUrl = (method) =>
+  `http://127.0.0.1:9099/identitytoolkit.googleapis.com/v1/accounts:${method}?key=demo-key`;
+const authCall = async (method) => {
+  const response = await fetch(authUrl(method), {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ ...ADMIN, returnSecureToken: true }),
+  });
+  return { ok: response.ok, body: await response.json() };
+};
+let account = await authCall('signUp');
+if (!account.ok) account = await authCall('signInWithPassword');
+if (!account.ok) {
+  throw new Error(`No se pudo crear la cuenta de administrador: ${JSON.stringify(account.body)}`);
+}
+const adminUid = account.body.localId;
+
 const env = await initializeTestEnvironment({
   projectId: 'demo-turnos',
   firestore: { host: '127.0.0.1', port: 8080 },
@@ -54,6 +75,12 @@ const takenSlots = [`${day}T18:00`, `${day}T19:00`];
 
 await env.withSecurityRulesDisabled(async (context) => {
   const db = context.firestore();
+  await setDoc(doc(db, 'users', adminUid), {
+    displayName: 'Administración',
+    email: ADMIN.email,
+    role: 'admin',
+    createdAt: new Date(),
+  });
   for (const [id, data] of Object.entries(resources)) {
     await setDoc(doc(db, 'resources', id), data);
   }
@@ -68,5 +95,6 @@ await env.withSecurityRulesDisabled(async (context) => {
 await env.cleanup();
 console.log(
   `Cargados ${Object.keys(resources).length} recursos y ${takenSlots.length} franjas ocupadas ` +
-    `(${takenSlots.join(', ')}) en demo-turnos.`,
+    `(${takenSlots.join(', ')}) en demo-turnos.\n` +
+    `Administrador: ${ADMIN.email} / ${ADMIN.password}`,
 );

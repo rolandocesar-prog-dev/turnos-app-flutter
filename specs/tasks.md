@@ -43,7 +43,7 @@ Cada tarea referencia su requisito. Marca `[x]` al terminar y haz un commit por 
 El panel de administración va primero porque se hace entero contra los emuladores; el resto
 necesita el proyecto real de Firebase.
 
-- [ ] Reglas de administración (recursos validados, reservas de todos, cancelar con motivo) con sus
+- [x] Reglas de administración (recursos validados, reservas de todos, cancelar con motivo) con sus
       pruebas, y cuenta de administrador en los datos de ejemplo (RNF-01, design.md §11).
 - [ ] Rol en la app: ruta `/admin` solo para administradores y lista de todos los recursos.
 - [ ] Crear, editar y desactivar recursos, con horario semanal y días bloqueados (RF-06).

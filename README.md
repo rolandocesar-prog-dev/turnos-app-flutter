@@ -37,7 +37,12 @@ En desarrollo, la app usa los **emuladores de Firebase** con el proyecto de demo
 ```bash
 npm ci                 # firebase-tools, fijado en package.json
 npm run emulators      # Auth :9099, Firestore :8080, interfaz en http://localhost:4000
+npm run seed           # en otra terminal: recursos de ejemplo y cuenta de administrador
 ```
+
+La cuenta de administrador de los datos de ejemplo es `admin@turnos.test` con la contraseña
+`admin-turnos`; solo existe en los emuladores. Cualquier otra cuenta que crees en la app es de
+cliente.
 
 En otra terminal:
 

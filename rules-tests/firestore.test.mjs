@@ -45,8 +45,19 @@ beforeEach(async () => {
   await env.withSecurityRulesDisabled(async (context) => {
     const db = context.firestore();
     await setDoc(doc(db, 'users', ADMIN.uid), { email: ADMIN.email, role: 'admin' });
-    await setDoc(doc(db, 'resources', 'cancha-1'), { name: 'Cancha 1', active: true });
+    await setDoc(doc(db, 'resources', 'cancha-1'), recurso({ name: 'Cancha 1' }));
   });
+});
+
+// Recurso válido según el modelo (design.md §3 y §11).
+const recurso = (extra = {}) => ({
+  name: 'Cancha nueva',
+  description: 'Techada',
+  slotMinutes: 60,
+  active: true,
+  weeklySchedule: { mon: [{ start: '08:00', end: '22:00' }] },
+  blockedDates: ['2026-12-25'],
+  ...extra,
 });
 
 const as = (user) => env.authenticatedContext(user.uid, { email: user.email }).firestore();
@@ -116,10 +127,47 @@ describe('resources/{id}', () => {
   });
 
   test('solo un admin crea o edita recursos', async () => {
-    await assertFails(setDoc(doc(as(ANA), 'resources', 'nuevo'), { name: 'X', active: true }));
+    await assertFails(setDoc(doc(as(ANA), 'resources', 'nuevo'), recurso()));
     await assertFails(updateDoc(doc(as(ANA), 'resources', 'cancha-1'), { active: false }));
-    await assertSucceeds(setDoc(doc(as(ADMIN), 'resources', 'nuevo'), { name: 'X', active: true }));
+    await assertSucceeds(setDoc(doc(as(ADMIN), 'resources', 'nuevo'), recurso()));
     await assertSucceeds(updateDoc(doc(as(ADMIN), 'resources', 'cancha-1'), { active: false }));
+  });
+
+  test('el recurso debe respetar el modelo', async () => {
+    const crear = (data) => setDoc(doc(as(ADMIN), 'resources', 'nuevo'), data);
+    await assertFails(crear(recurso({ precio: 10 })));
+    await assertFails(crear(recurso({ name: '' })));
+    await assertFails(crear(recurso({ name: 'x'.repeat(61) })));
+    await assertFails(crear(recurso({ description: 'x'.repeat(301) })));
+    await assertFails(crear(recurso({ slotMinutes: 0 })));
+    await assertFails(crear(recurso({ slotMinutes: 30.5 })));
+    await assertFails(crear(recurso({ slotMinutes: 241 })));
+    await assertFails(crear(recurso({ active: 'sí' })));
+    await assertFails(crear(recurso({ weeklySchedule: { lunes: [] } })));
+    await assertFails(crear(recurso({ blockedDates: '2026-12-25' })));
+    const { weeklySchedule, ...sinHorario } = recurso();
+    assert.ok(weeklySchedule);
+    await assertFails(crear(sinHorario));
+    const { description, blockedDates, ...minimo } = recurso();
+    assert.ok(description && blockedDates);
+    await assertSucceeds(crear(minimo));
+  });
+
+  test('un recurso no se borra, ni siquiera el admin', async () => {
+    await assertFails(deleteDoc(doc(as(ADMIN), 'resources', 'cancha-1')));
+  });
+});
+
+describe('perfiles para el administrador', () => {
+  test('el admin lee el perfil de un cliente; otro cliente no', async () => {
+    await assertSucceeds(setDoc(doc(as(ANA), 'users', ANA.uid), profile(ANA)));
+    await assertSucceeds(getDoc(doc(as(ADMIN), 'users', ANA.uid)));
+    await assertFails(getDoc(doc(as(LUIS), 'users', ANA.uid)));
+  });
+
+  test('el admin no cambia el rol de nadie desde la app', async () => {
+    await assertSucceeds(setDoc(doc(as(ANA), 'users', ANA.uid), profile(ANA)));
+    await assertFails(updateDoc(doc(as(ADMIN), 'users', ANA.uid), { role: 'admin' }));
   });
 });
 
@@ -298,6 +346,57 @@ describe('bookings/{id} con su franja', () => {
     await assertSucceeds(cancelar(ANA));
     await assertFails(updateDoc(bookingRef(as(ANA)), { status: 'active' }));
     await assertFails(deleteDoc(bookingRef(as(ANA))));
+  });
+
+  // Administración (RF-06, design.md §11).
+  test('el admin lee todas las reservas, también por día', async () => {
+    await assertSucceeds(reservar(ANA));
+    await assertSucceeds(getDoc(bookingRef(as(ADMIN))));
+    const desde = Timestamp.fromDate(new Date(Date.now() + 23 * HOUR));
+    const bookings = collection(as(ADMIN), 'bookings');
+    await assertSucceeds(getDocs(query(bookings, where('startAt', '>=', desde))));
+    await assertFails(getDocs(query(collection(as(LUIS), 'bookings'), where('startAt', '>=', desde))));
+  });
+
+  test('el admin cancela con motivo, aun a menos de 2 horas, y libera la franja', async () => {
+    await assertSucceeds(reservar(ANA, { startAt: new Date(Date.now() + HOUR) }));
+    await assertSucceeds(cancelar(ADMIN, { cambios: { cancelReason: 'Corte de luz' } }));
+    const reserva = await getDoc(bookingRef(as(ANA)));
+    assert.equal(reserva.data().cancelReason, 'Corte de luz');
+    assert.equal((await getDoc(slotRef(as(LUIS)))).exists(), false);
+  });
+
+  test('el admin necesita un motivo de 3 a 200 caracteres y liberar la franja', async () => {
+    await assertSucceeds(reservar(ANA));
+    await assertFails(cancelar(ADMIN));
+    await assertFails(cancelar(ADMIN, { cambios: { cancelReason: 'no' } }));
+    await assertFails(cancelar(ADMIN, { cambios: { cancelReason: 'x'.repeat(201) } }));
+    await assertFails(cancelar(ADMIN, { liberar: false, cambios: { cancelReason: 'Lluvia' } }));
+    await assertFails(
+      cancelar(ADMIN, { cambios: { cancelReason: 'Lluvia', resourceName: 'Otra' } }),
+    );
+  });
+
+  test('el admin no cancela una reserva que ya empezó', async () => {
+    await env.withSecurityRulesDisabled(async (context) => {
+      const db = context.firestore();
+      await setDoc(bookingRef(db, 'vieja'), {
+        resourceId: 'cancha-1',
+        slotId: SLOT_ID,
+        uid: ANA.uid,
+        startAt: Timestamp.fromDate(new Date(Date.now() - HOUR)),
+        status: 'active',
+      });
+      await setDoc(slotRef(db), { bookingId: 'vieja', uid: ANA.uid });
+    });
+    await assertFails(
+      cancelar(ADMIN, { bookingId: 'vieja', cambios: { cancelReason: 'Lluvia' } }),
+    );
+  });
+
+  test('el cliente no puede escribir un motivo de cancelación', async () => {
+    await assertSucceeds(reservar(ANA));
+    await assertFails(cancelar(ANA, { cambios: { cancelReason: 'Me equivoqué' } }));
   });
 });
 
