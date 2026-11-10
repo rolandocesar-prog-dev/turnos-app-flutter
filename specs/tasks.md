@@ -56,7 +56,8 @@ necesita el proyecto real de Firebase.
 - [x] Límite de 3 reservas activas también en el servidor (design.md §10 y §12).
 - [x] FCM: registro de tokens por usuario, con permiso pedido desde «Mis reservas»
       (design.md §13).
-- [ ] Cloud Function programada: recordatorio 1 h antes.
+- [ ] Cloud Function programada: recordatorio 1 h antes, en la hora del negocio
+      (design.md §13, «Envío»).
 - [ ] Notificación al cliente cuando el administrador cancela su reserva (RF-05).
 
 ## M5 · Entrega

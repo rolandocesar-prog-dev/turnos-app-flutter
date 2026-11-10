@@ -345,3 +345,29 @@ Se hace antes que el proyecto real de Firebase: todo funciona contra los emulado
   se usa la clave VAPID por defecto de Firebase.
 - `PushRepository` (dominio) pide el permiso y entrega el token; su implementación con
   `firebase_messaging` vive en `data/`. Las pruebas usan un repositorio simulado.
+
+### Envío (Cloud Functions)
+
+- **Recordatorio** (RF-05): `reminders`, una función programada cada 5 minutos, busca las reservas
+  que empiezan dentro de la próxima hora (rango de `startAt`, índice simple; el estado se filtra
+  en código) que siguen activas y no tienen `reminderSentAt`. Marca `reminderSentAt` en una
+  transacción **antes** de enviar: si algo falla, el cliente se queda sin un aviso, pero nunca
+  recibe dos. Como mira toda la hora siguiente y no solo una franja de 5 minutos, una ejecución
+  perdida no deja turnos sin recordatorio.
+- **Aviso de cancelación** (RF-05): `bookingCancelledNotice`, un disparador
+  `onDocumentUpdated('bookings/{id}')`, avisa cuando una reserva pasa de `active` a `cancelled`
+  con `cancelReason` y sin `cancelledBy` (la canceló el negocio, §11). Las que cancela el cliente
+  no se avisan; las del límite automático tampoco (el cliente acaba de reservar y lo ve en la
+  app).
+- **Textos**: «Tu turno es en 1 hora» / «Cancha de fútbol 5, hoy a las 18:00.» y «Tu reserva fue
+  cancelada» / «Cancha de fútbol 5, mar 10 nov a las 18:00. Motivo: …». Las horas se escriben en
+  la **zona del negocio**, `America/La_Paz` (parámetro `BUSINESS_TIME_ZONE`), no en la del
+  servidor, que corre en UTC. Funciones puras, con pruebas.
+- **Destinatarios**: los ids de `users/{uid}.fcmTokens`. Los que FCM rechaza como no registrados
+  o inválidos se quitan del perfil (`arrayRemove`).
+- **Emulador**: no hay FCM, así que el envío pasa por una interfaz (`PushSender`). En producción
+  usa `sendEach` del SDK de administración con `FidMessage`; en el emulador
+  (`FUNCTIONS_EMULATOR`) guarda cada aviso en la colección `devOutbox`, que las pruebas leen y
+  que las reglas mantienen cerrada.
+- `reminderSentAt` solo lo escribe el servidor (las reglas de `bookings` no lo permiten a nadie
+  más).
