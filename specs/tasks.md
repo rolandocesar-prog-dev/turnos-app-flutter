@@ -59,7 +59,9 @@ necesita el proyecto real de Firebase.
 - [x] Cloud Function programada: recordatorio 1 h antes, en la hora del negocio
       (design.md §13, «Envío»).
 - [x] Notificación al cliente cuando el administrador cancela su reserva (RF-05).
-- [ ] Probar el envío real de punta a punta (necesita el plan Blaze para desplegar las funciones).
+- [ ] Desplegar las funciones (plan Blaze activado el 2026-11-10).
+- [ ] Probar el envío real de punta a punta en un teléfono (lo hace el usuario con su cuenta; yo
+      no creo cuentas en producción).
 
 ## M5 · Entrega
 
@@ -69,6 +71,8 @@ necesita el proyecto real de Firebase.
       con nombre (tema claro y oscuro) y texto al 200 % (RNF-03, design.md §14).
 - [x] Versión web desplegada en Firebase Hosting, siempre compilada para `production`
       (design.md §6).
-- [ ] Publicación en prueba interna de Google Play o TestFlight.
+- [ ] Publicación en prueba interna de Google Play o TestFlight. **Pendiente por decisión del
+      usuario** (2026-11-10): tiene cuenta de desarrollador, pero el ciclo de pruebas internas y
+      cerradas lleva semanas; la demo pública es la versión web.
 - [ ] README final con capturas, GIF y arquitectura.
 - [ ] Agregar el proyecto, con enlaces, a la sección Proyectos del CV.

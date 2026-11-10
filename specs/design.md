@@ -342,8 +342,9 @@ Se hace antes que el proyecto real de Firebase: todo funciona contra los emulado
 - **Pruebas**: unitarias con Vitest; de integración contra los emuladores de Functions y
   Firestore (`npm run test:functions` en la raíz, con `firebase emulators:exec`). El CI las corre
   en el trabajo de reglas, que ya tiene Node y Java.
-- **Despliegue**: necesita el plan Blaze. Mientras el proyecto siga en Spark, las funciones solo
-  corren en el emulador (decisión del 2026-11-10).
+- **Despliegue**: necesita el plan Blaze, que el usuario activó el 2026-11-10. Se despliegan con
+  `npm run deploy:functions` (proyecto explícito en el comando; el `predeploy` compila el
+  TypeScript).
 - **Límite de 3 reservas en el servidor** (RF-03): las reglas no pueden contar documentos (§10),
   así que un disparador `onDocumentCreated('bookings/{id}')` revisa las reservas activas futuras
   del mismo cliente después de cada reserva.
