@@ -137,6 +137,12 @@ desactivadas, así no hace falta el SDK de administración.
     Spark, se desarrollan y prueban en el emulador, y se despliegan cuando se active Blaze.
   - Las reglas y los índices se publican con `npm run deploy:firestore` (proyecto explícito en el
     comando, para no publicar nunca en otro).
+  - **Hosting** (M5): la versión web se publica en `https://turnos-rv-portafolio.web.app` con
+    `npm run deploy:hosting`. El `predeploy` de `firebase.json` compila siempre con
+    `FIREBASE_ENV=production` (`scripts/build-web.mjs`), así nunca se publica una versión que
+    apunte a los emuladores. Las rutas usan `#`, pero igual toda ruta desconocida sirve
+    `index.html`; los archivos de Flutter no llevan hash en el nombre, así que se sirven con
+    `Cache-Control: no-cache` (el navegador revalida con ETag y no queda una versión vieja).
 - La app elige el entorno con `--dart-define=FIREBASE_ENV=…`: `emulators` (por defecto, con las
   opciones de `demo-turnos`: clave y app ficticias, que los emuladores aceptan, en
   `lib/src/core/firebase/`) o `production` (las opciones de `firebase_options.dart`, sin
