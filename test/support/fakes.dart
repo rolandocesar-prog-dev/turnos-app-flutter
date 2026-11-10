@@ -7,6 +7,7 @@ import 'package:turnos_app/src/features/auth/domain/auth_failure.dart';
 import 'package:turnos_app/src/features/auth/domain/auth_repository.dart';
 import 'package:turnos_app/src/features/auth/domain/user_profile_repository.dart';
 import 'package:turnos_app/src/features/bookings/domain/booking.dart';
+import 'package:turnos_app/src/features/notifications/domain/push_repository.dart';
 import 'package:turnos_app/src/features/bookings/domain/booking_failure.dart';
 import 'package:turnos_app/src/features/bookings/domain/booking_repository.dart';
 import 'package:turnos_app/src/features/resources/domain/resource.dart';
@@ -372,4 +373,41 @@ class FakeUserProfileRepository implements UserProfileRepository {
   @override
   Stream<UserRole> watchRole(String uid) =>
       Stream.value(admins.contains(uid) ? UserRole.admin : UserRole.client);
+
+  /// Tokens de FCM guardados, como `uid:token`.
+  final tokens = <String>[];
+
+  @override
+  Future<void> addFcmToken(String uid, String token) async =>
+      tokens.add('$uid:$token');
+}
+
+/// Avisos push simulados: [allowed] es el permiso actual y [grant] lo que contesta el usuario
+/// cuando se le pide; [refresh] simula que FCM renueva el token.
+class FakePushRepository implements PushRepository {
+  FakePushRepository({this.allowed = false, this.grant = true});
+
+  bool allowed;
+  bool grant;
+  var token = 'token-1';
+  final requests = <String>[];
+  final _refreshes = StreamController<String>.broadcast();
+
+  void refresh(String newToken) => _refreshes.add(newToken);
+
+  @override
+  Future<bool> isAllowed() async => allowed;
+
+  @override
+  Future<String> enable() async {
+    if (!allowed) {
+      requests.add('permiso');
+      if (!grant) throw const PushFailure(PushFailureReason.denied);
+      allowed = true;
+    }
+    return token;
+  }
+
+  @override
+  Stream<String> get tokenRefreshes => _refreshes.stream;
 }

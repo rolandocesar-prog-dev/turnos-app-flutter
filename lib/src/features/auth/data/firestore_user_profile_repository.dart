@@ -22,6 +22,12 @@ class FirestoreUserProfileRepository implements UserProfileRepository {
       .doc(uid)
       .snapshots()
       .map((doc) => roleFromProfile(doc.data()));
+
+  @override
+  Future<void> addFcmToken(String uid, String token) =>
+      _firestore.collection('users').doc(uid).update({
+        'fcmTokens': FieldValue.arrayUnion([token]),
+      });
 }
 
 /// Solo `role: "admin"` da permisos de administración; cualquier otro valor, o la falta de

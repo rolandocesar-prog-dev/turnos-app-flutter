@@ -10,4 +10,7 @@ abstract interface class UserProfileRepository {
 
   /// Rol de [uid] en tiempo real; sin perfil, `client`.
   Stream<UserRole> watchRole(String uid);
+
+  /// Guarda el token de FCM de un dispositivo de [uid], sin duplicarlo (design.md §13).
+  Future<void> addFcmToken(String uid, String token);
 }

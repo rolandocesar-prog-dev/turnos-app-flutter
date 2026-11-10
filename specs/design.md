@@ -329,8 +329,10 @@ Se hace antes que el proyecto real de Firebase: todo funciona contra los emulado
 
 ## 13. Notificaciones push (RF-05, M4)
 
-- **Tokens**: cada dispositivo donde el cliente activa los avisos guarda su token de FCM en
-  `users/{uid}.fcmTokens` (`arrayUnion`, sin duplicados). Las reglas dejan que el dueño agregue o
+- **Tokens**: cada dispositivo donde el cliente activa los avisos guarda su identificador de FCM
+  en `users/{uid}.fcmTokens` (`arrayUnion`, sin duplicados). Desde firebase_messaging 17 ese
+  identificador es el id de instalación (FID) que entrega `register()` por `onRegistered`
+  (`getToken` quedó obsoleto); el SDK de administración envía a un FID con `FidMessage`. Las reglas dejan que el dueño agregue o
   quite tokens (lista de hasta 10 elementos) y nada más; el servidor borra los que FCM rechace al
   enviar.
 - **Cuándo se pide el permiso**: no al iniciar sesión, sino cuando el cliente toca «Activar

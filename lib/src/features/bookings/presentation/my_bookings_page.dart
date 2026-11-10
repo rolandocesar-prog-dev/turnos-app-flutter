@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../notifications/presentation/push_card.dart';
 import '../../resources/application/resource_providers.dart';
 import '../../resources/domain/schedule_format.dart';
 import '../application/booking_providers.dart';
@@ -61,6 +62,8 @@ class _BookingList extends ConsumerWidget {
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
+        const PushCard(),
+        const SizedBox(height: 8),
         Text('Próximas', style: textTheme.titleMedium),
         const SizedBox(height: 8),
         if (upcoming.isEmpty)
