@@ -1,4 +1,5 @@
 import '../domain/resource.dart';
+import '../domain/schedule_format.dart';
 
 /// Claves de `weeklySchedule` en Firestore y su número de `DateTime.weekday`.
 const weekdayKeys = {
@@ -10,6 +11,33 @@ const weekdayKeys = {
   'sat': DateTime.saturday,
   'sun': DateTime.sunday,
 };
+
+/// Datos de `resources/{id}` para [resource] (el id no se guarda en el documento). Es el inverso
+/// de [resourceFromFirestore]; solo lleva los campos que aceptan las reglas (design.md §11). Los
+/// días sin horario no se escriben.
+Map<String, Object> resourceToFirestore(Resource resource) {
+  const time = ScheduleFormat.time;
+  return {
+    'name': resource.name,
+    'description': resource.description,
+    if (resource.photoUrl case final url?) 'photoUrl': url,
+    'slotMinutes': resource.slotMinutes,
+    'active': resource.active,
+    'weeklySchedule': {
+      for (final MapEntry(key: name, value: weekday) in weekdayKeys.entries)
+        if (resource.weeklySchedule[weekday] case final ranges?
+            when ranges.isNotEmpty)
+          name: [
+            for (final range in ranges)
+              {
+                'start': time(range.startMinutes),
+                'end': time(range.endMinutes),
+              },
+          ],
+    },
+    'blockedDates': resource.blockedDates.toList()..sort(),
+  };
+}
 
 /// Convierte los documentos del catálogo omitiendo los mal formados: uno roto no deja a todos sin
 /// catálogo. Cada omitido se informa a [onInvalid] (design.md §9).

@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../core/presentation/loading_page.dart';
 import '../features/auth/application/auth_providers.dart';
 import '../features/admin/presentation/admin_page.dart';
+import '../features/admin/presentation/resource_form_page.dart';
 import '../features/auth/domain/app_user.dart';
 import '../features/auth/domain/user_profile_repository.dart';
 import '../features/auth/presentation/login_page.dart';
@@ -54,6 +55,19 @@ final routerProvider = Provider<GoRouter>((ref) {
           GoRoute(
             path: 'admin',
             builder: (context, state) => const AdminPage(),
+            routes: [
+              // «nuevo» va antes que «:id» para que no se lea como un id.
+              GoRoute(
+                path: 'recursos/nuevo',
+                builder: (context, state) => const ResourceFormPage(),
+              ),
+              GoRoute(
+                path: 'recursos/:id',
+                builder: (context, state) => ResourceFormPage(
+                  resourceId: state.pathParameters['id'],
+                ),
+              ),
+            ],
           ),
         ],
       ),

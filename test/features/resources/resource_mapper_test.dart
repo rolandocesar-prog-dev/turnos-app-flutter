@@ -20,6 +20,39 @@ void main() {
         'blockedDates': ['2026-12-25'],
       };
 
+  group('resourceToFirestore (design.md §11)', () {
+    test('escribe lo que resourceFromFirestore lee', () {
+      final data = valid();
+      expect(resourceToFirestore(resourceFromFirestore('c', data)), data);
+    });
+
+    test('omite los días sin horario y la foto vacía, y ordena los bloqueados',
+        () {
+      const resource = Resource(
+        id: 'x',
+        name: 'Sala',
+        description: '',
+        slotMinutes: 120,
+        active: false,
+        weeklySchedule: {DateTime.friday: [], DateTime.sunday: []},
+        blockedDates: {'2027-01-01', '2026-12-25'},
+      );
+      expect(resourceToFirestore(resource), {
+        'name': 'Sala',
+        'description': '',
+        'slotMinutes': 120,
+        'active': false,
+        'weeklySchedule': <String, Object>{},
+        'blockedDates': ['2026-12-25', '2027-01-01'],
+      });
+    });
+
+    test('conserva la foto', () {
+      final data = {...valid(), 'photoUrl': 'https://ejemplo.com/f.jpg'};
+      expect(resourceToFirestore(resourceFromFirestore('c', data)), data);
+    });
+  });
+
   test('lee un recurso completo', () {
     final resource = resourceFromFirestore('consultorio', valid());
 

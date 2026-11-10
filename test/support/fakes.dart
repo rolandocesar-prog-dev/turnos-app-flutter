@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:turnos_app/src/features/admin/domain/resource_editor.dart';
 import 'package:turnos_app/src/features/auth/domain/app_user.dart';
 import 'package:turnos_app/src/features/auth/domain/auth_failure.dart';
 import 'package:turnos_app/src/features/auth/domain/auth_repository.dart';
@@ -269,6 +270,34 @@ class FakeAuthRepository implements AuthRepository {
     final user = AppUser(uid: 'uid-$email', email: email);
     emit(user);
     return user;
+  }
+}
+
+/// Registra los recursos creados y editados; [failWith] hace fallar la próxima escritura.
+class FakeResourceEditor implements ResourceEditor {
+  final created = <Resource>[];
+  final updated = <Resource>[];
+  Exception? failWith;
+
+  @override
+  Future<String> create(Resource draft) async {
+    _fail();
+    created.add(draft);
+    return 'nuevo-${created.length}';
+  }
+
+  @override
+  Future<void> update(Resource resource) async {
+    _fail();
+    updated.add(resource);
+  }
+
+  void _fail() {
+    final failure = failWith;
+    if (failure != null) {
+      failWith = null;
+      throw failure;
+    }
   }
 }
 

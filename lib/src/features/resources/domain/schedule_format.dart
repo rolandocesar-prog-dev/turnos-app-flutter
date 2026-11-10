@@ -57,6 +57,10 @@ abstract final class ScheduleFormat {
         : label;
   }
 
+  /// «vie 25 dic 2026», para fechas sin relación con hoy (días bloqueados).
+  static String longDate(DateTime day) =>
+      '${_shortWeekdays[day.weekday]} ${day.day} ${_shortMonths[day.month - 1]} ${day.year}';
+
   /// Hora de [moment] como «HH:mm».
   static String clock(DateTime moment) =>
       time(moment.hour * 60 + moment.minute);

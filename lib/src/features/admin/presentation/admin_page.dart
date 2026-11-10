@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
+import '../../../routing/session_redirect.dart';
 import '../../auth/application/auth_providers.dart';
 import '../../auth/domain/user_profile_repository.dart';
 import '../../resources/application/resource_providers.dart';
@@ -17,6 +19,13 @@ class AdminPage extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(title: const Text('Administración')),
+      floatingActionButton: isAdmin
+          ? FloatingActionButton.extended(
+              onPressed: () => context.go('${AppRoutes.admin}/recursos/nuevo'),
+              icon: const Icon(Icons.add),
+              label: const Text('Nuevo recurso'),
+            )
+          : null,
       // Mientras el rol carga, se espera; con otro rol, la redirección ya llevó al inicio.
       body: isAdmin
           ? const _ResourceList()
@@ -78,6 +87,8 @@ class _ResourceTile extends StatelessWidget {
           '${ScheduleFormat.slotDuration(resource.slotMinutes)} · '
           '${resource.active ? 'Activo' : 'Inactivo: no aparece en el catálogo'}',
         ),
+        trailing: const Icon(Icons.edit),
+        onTap: () => context.go('${AppRoutes.admin}/recursos/${resource.id}'),
       ),
     );
   }

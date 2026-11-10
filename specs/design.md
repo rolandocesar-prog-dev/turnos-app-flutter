@@ -278,7 +278,11 @@ Se hace antes que el proyecto real de Firebase: todo funciona contra los emulado
   («09:00-13:00, 15:00-19:00»; vacío = cerrado) y lo valida una función pura del dominio
   (`parseDayRanges`: formato, fin después del inicio, intervalos en orden y sin solaparse), con
   mensajes por campo. Los días bloqueados se agregan con un selector de fecha y se quitan desde su
-  chip. Un recurso nuevo recibe un id generado.
+  chip. Un recurso nuevo recibe un id generado. Para que el selector de fecha esté en español, la
+  app carga las traducciones de Material (`flutter_localizations`, locale `es`); los textos
+  propios pasan a ARB en M5 (RNF-06).
+- `resourceToFirestore` es el inverso del mapper de lectura (con prueba de ida y vuelta) y solo
+  escribe los campos que aceptan las reglas; guardar reemplaza el documento entero.
 - **Reservas del día**: consulta por rango de `startAt` del día elegido (índice simple), en tiempo
   real, con flechas para el día anterior y el siguiente. Cada reserva muestra hora, recurso,
   cliente (correo del perfil) y estado. Cancelar pide el motivo; el cliente lo ve en «Mis
