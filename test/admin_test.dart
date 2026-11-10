@@ -7,6 +7,8 @@ import 'package:turnos_app/src/features/admin/application/admin_providers.dart';
 import 'package:turnos_app/src/features/auth/application/auth_providers.dart';
 import 'package:turnos_app/src/features/auth/domain/app_user.dart';
 import 'package:turnos_app/src/features/bookings/application/booking_providers.dart';
+import 'package:turnos_app/src/features/bookings/domain/booking.dart';
+import 'package:turnos_app/src/features/bookings/domain/booking_failure.dart';
 import 'package:turnos_app/src/features/resources/application/resource_providers.dart';
 import 'package:turnos_app/src/features/resources/domain/resource.dart';
 
@@ -29,12 +31,19 @@ void main() {
   late FakeResourceRepository catalog;
   late FakeSlotRepository slots;
   late FakeResourceEditor editor;
+  late FakeBookingRepository bookings;
+  late FakeAdminBookingRepository adminBookings;
 
   setUp(() {
     auth = FakeAuthRepository();
     catalog = FakeResourceRepository([testCancha, testConsultorio, sala]);
     slots = FakeSlotRepository();
     editor = FakeResourceEditor();
+    bookings = FakeBookingRepository(slots);
+    adminBookings = FakeAdminBookingRepository(
+      bookings,
+      emails: {'u1': 'ana@ejemplo.com', 'u2': 'luis@ejemplo.com'},
+    );
   });
   tearDown(() => auth.close());
 
@@ -53,10 +62,11 @@ void main() {
           googleSignInAvailableProvider.overrideWithValue(false),
           resourceRepositoryProvider.overrideWithValue(catalog),
           slotRepositoryProvider.overrideWithValue(slots),
-          bookingRepositoryProvider
-              .overrideWithValue(FakeBookingRepository(slots)),
+          bookingRepositoryProvider.overrideWithValue(bookings),
+          // Lunes 9 de noviembre de 2026, 10:00.
           clockProvider.overrideWithValue(() => DateTime(2026, 11, 9, 10)),
           resourceEditorProvider.overrideWithValue(editor),
+          adminBookingRepositoryProvider.overrideWithValue(adminBookings),
         ],
         child: const TurnosApp(),
       ),
@@ -235,6 +245,162 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('Ese recurso no existe.'), findsOneWidget);
+    });
+  });
+
+  group('reservas del día (RF-06)', () {
+    final today = DateTime(2026, 11, 9);
+    late Booking pending;
+
+    setUp(() {
+      pending = testBooking('b1', today.add(const Duration(hours: 15)));
+      bookings
+        ..add(pending)
+        ..add(
+          testBooking(
+            'b2',
+            today.add(const Duration(hours: 9)),
+            uid: 'u2',
+            resource: testCancha,
+          ),
+        )
+        ..add(
+          testBooking(
+            'b3',
+            today.add(const Duration(hours: 11, minutes: 30)),
+            status: BookingStatus.cancelled,
+            cancelReason: 'Lluvia',
+          ),
+        )
+        ..add(
+          testBooking(
+            'b4',
+            today.add(const Duration(days: 1, hours: 18)),
+            uid: 'u2',
+          ),
+        );
+    });
+
+    Future<void> openDay(WidgetTester tester) async {
+      await signIn(tester, admin);
+      goTo(tester, '/admin');
+      await tester.pumpAndSettle();
+      await tester.tap(find.byTooltip('Reservas del día'));
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets('muestra las de hoy de todos los clientes, en orden',
+        (tester) async {
+      await openDay(tester);
+
+      expect(find.text('Hoy'), findsOneWidget);
+      final titles = tester
+          .widgetList<ListTile>(find.byType(ListTile))
+          .map((tile) => (tile.title! as Text).data)
+          .toList();
+      expect(titles, [
+        '09:00–10:00 · Cancha de fútbol 5',
+        '11:30–12:30 · Consultorio dental',
+        '15:00–16:00 · Consultorio dental',
+      ]);
+      expect(find.text('luis@ejemplo.com\nYa empezó'), findsOneWidget);
+      expect(
+        find.text('ana@ejemplo.com\nCancelada por el negocio: Lluvia'),
+        findsOneWidget,
+      );
+      expect(find.text('ana@ejemplo.com\nActiva'), findsOneWidget);
+      // Solo la que no empezó ni está cancelada se puede cancelar.
+      expect(find.text('Cancelar'), findsOneWidget);
+    });
+
+    testWidgets('cambia de día con las flechas', (tester) async {
+      await openDay(tester);
+
+      await tester.tap(find.byTooltip('Día siguiente'));
+      await tester.pumpAndSettle();
+      expect(find.text('Mañana'), findsOneWidget);
+      expect(find.text('18:00–19:00 · Consultorio dental'), findsOneWidget);
+
+      await tester.tap(find.byTooltip('Día anterior'));
+      await tester.tap(find.byTooltip('Día anterior'));
+      await tester.pumpAndSettle();
+      expect(find.text('No hay reservas para dom 8 nov.'), findsOneWidget);
+    });
+
+    testWidgets('cancela con motivo y libera la franja', (tester) async {
+      await openDay(tester);
+
+      await tester.tap(find.text('Cancelar'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Cancelar reserva'));
+      await tester.pumpAndSettle();
+      expect(
+        find.text('Escribe el motivo (al menos 3 caracteres).'),
+        findsOneWidget,
+      );
+      expect(bookings.cancelled, isEmpty);
+
+      await tester.enterText(
+        find.widgetWithText(TextFormField, 'Motivo'),
+        '  Corte de luz ',
+      );
+      await tester.tap(find.text('Cancelar reserva'));
+      await tester.pumpAndSettle();
+
+      expect(bookings.cancelled, ['b1']);
+      expect(
+        find.text('Reserva cancelada. El horario quedó libre.'),
+        findsOneWidget,
+      );
+      expect(
+        find.text('ana@ejemplo.com\nCancelada por el negocio: Corte de luz'),
+        findsOneWidget,
+      );
+      expect(find.text('Cancelar'), findsNothing);
+    });
+
+    testWidgets('volver del diálogo no cancela', (tester) async {
+      await openDay(tester);
+
+      await tester.tap(find.text('Cancelar'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Volver'));
+      await tester.pumpAndSettle();
+
+      expect(bookings.cancelled, isEmpty);
+    });
+
+    testWidgets('si el servidor la rechaza, muestra el motivo', (tester) async {
+      await openDay(tester);
+      adminBookings.failWith =
+          const BookingFailure(BookingFailureReason.notCancellable);
+
+      await tester.tap(find.text('Cancelar'));
+      await tester.pumpAndSettle();
+      await tester.enterText(
+        find.widgetWithText(TextFormField, 'Motivo'),
+        'Lluvia',
+      );
+      await tester.tap(find.text('Cancelar reserva'));
+      await tester.pumpAndSettle();
+
+      expect(
+        find.text('Esa reserva ya empezó o ya estaba cancelada.'),
+        findsOneWidget,
+      );
+      expect(bookings.cancelled, isEmpty);
+    });
+
+    testWidgets('el cliente ve el motivo en Mis reservas', (tester) async {
+      await signIn(tester, client);
+
+      await tester.tap(find.byTooltip('Mis reservas'));
+      await tester.pumpAndSettle();
+
+      expect(
+        find.textContaining('Cancelada por el negocio: Lluvia'),
+        findsOneWidget,
+      );
     });
   });
 

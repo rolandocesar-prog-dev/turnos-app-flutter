@@ -18,7 +18,17 @@ class AdminPage extends ConsumerWidget {
     final isAdmin = ref.watch(currentRoleProvider).value == UserRole.admin;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Administración')),
+      appBar: AppBar(
+        title: const Text('Administración'),
+        actions: [
+          if (isAdmin)
+            IconButton(
+              tooltip: 'Reservas del día',
+              icon: const Icon(Icons.today),
+              onPressed: () => context.go('${AppRoutes.admin}/reservas'),
+            ),
+        ],
+      ),
       floatingActionButton: isAdmin
           ? FloatingActionButton.extended(
               onPressed: () => context.go('${AppRoutes.admin}/recursos/nuevo'),

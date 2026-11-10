@@ -46,5 +46,10 @@ Booking bookingFromFirestore(String id, Map<String, dynamic> data) {
     startAt: field<Timestamp>('startAt').toDate(),
     endAt: field<Timestamp>('endAt').toDate(),
     status: status,
+    cancelReason: switch (data['cancelReason']) {
+      null => null,
+      final String reason => reason,
+      _ => throw FormatException('bookings/$id: «cancelReason» no es String'),
+    },
   );
 }

@@ -54,7 +54,7 @@ class FirestoreBookingRepository implements BookingRepository {
           .commit();
     } on FirebaseException catch (error) {
       throw BookingFailure(
-        bookingFailureReasonFor(error.code, cancelling: true),
+        bookingFailureReasonFor(error.code, action: BookingAction.cancel),
       );
     }
   }
@@ -117,17 +117,23 @@ class FirestoreBookingRepository implements BookingRepository {
   }
 }
 
-/// Traduce el código de error de Firestore al motivo del dominio (design.md §10). Un rechazo de
-/// las reglas significa, al reservar, que la franja ya no está disponible y, al cancelar, que
-/// pasó el plazo de 2 horas.
+/// Quién hace la acción que falló, para traducir un rechazo de las reglas.
+enum BookingAction { book, cancel, adminCancel }
+
+/// Traduce el código de error de Firestore al motivo del dominio (design.md §10 y §11). Un
+/// rechazo de las reglas significa, al reservar, que la franja ya no está disponible; al cancelar,
+/// que pasó el plazo de 2 horas; y si cancela el administrador, que la reserva ya empezó o ya no
+/// estaba activa.
 BookingFailureReason bookingFailureReasonFor(
   String code, {
-  bool cancelling = false,
+  BookingAction action = BookingAction.book,
 }) =>
     switch (code) {
-      'permission-denied' => cancelling
-          ? BookingFailureReason.tooLateToCancel
-          : BookingFailureReason.slotUnavailable,
+      'permission-denied' => switch (action) {
+          BookingAction.book => BookingFailureReason.slotUnavailable,
+          BookingAction.cancel => BookingFailureReason.tooLateToCancel,
+          BookingAction.adminCancel => BookingFailureReason.notCancellable,
+        },
       'unavailable' => BookingFailureReason.network,
       _ => BookingFailureReason.unknown,
     };

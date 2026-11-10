@@ -8,6 +8,10 @@ enum BookingFailureReason {
   limitReached('Ya tienes 3 reservas activas. Cancela una para reservar otra.'),
   slotPast('Ese horario ya pasó. Elige otro.'),
   tooLateToCancel('Solo se puede cancelar hasta 2 horas antes.'),
+
+  /// El administrador intentó cancelar una reserva que ya empezó o ya estaba cancelada (RF-06).
+  notCancellable('Esa reserva ya empezó o ya estaba cancelada.'),
+  invalidReason('Escribe el motivo de la cancelación.'),
   network('No hay conexión. Revisa tu internet y vuelve a probar.'),
   unknown('No se pudo completar. Vuelve a intentarlo.');
 

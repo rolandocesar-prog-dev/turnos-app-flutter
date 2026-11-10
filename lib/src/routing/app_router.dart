@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../core/presentation/loading_page.dart';
 import '../features/auth/application/auth_providers.dart';
+import '../features/admin/presentation/admin_bookings_page.dart';
 import '../features/admin/presentation/admin_page.dart';
 import '../features/admin/presentation/resource_form_page.dart';
 import '../features/auth/domain/app_user.dart';
@@ -56,6 +57,10 @@ final routerProvider = Provider<GoRouter>((ref) {
             path: 'admin',
             builder: (context, state) => const AdminPage(),
             routes: [
+              GoRoute(
+                path: 'reservas',
+                builder: (context, state) => const AdminBookingsPage(),
+              ),
               // «nuevo» va antes que «:id» para que no se lea como un id.
               GoRoute(
                 path: 'recursos/nuevo',

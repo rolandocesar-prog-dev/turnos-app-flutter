@@ -142,7 +142,10 @@ class _BookingCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final upcoming = booking.isUpcoming(now);
     final note = switch (booking.status) {
-      BookingStatus.cancelled => 'Cancelada',
+      BookingStatus.cancelled => switch (booking.cancelReason) {
+          final String reason => 'Cancelada por el negocio: $reason',
+          null => 'Cancelada',
+        },
       BookingStatus.active when !upcoming => 'Ya pasó',
       BookingStatus.active when !canCancel(booking, now) =>
         BookingFailureReason.tooLateToCancel.message,

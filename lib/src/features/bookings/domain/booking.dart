@@ -12,6 +12,7 @@ class Booking {
     required this.startAt,
     required this.endAt,
     required this.status,
+    this.cancelReason,
   });
 
   final String id;
@@ -24,6 +25,9 @@ class Booking {
   final DateTime startAt;
   final DateTime endAt;
   final BookingStatus status;
+
+  /// Motivo, cuando la canceló el administrador (RF-06); el cliente cancela sin motivo.
+  final String? cancelReason;
 
   /// Reserva activa que todavía no empezó.
   bool isUpcoming(DateTime now) =>
@@ -41,3 +45,24 @@ const cancelWindow = Duration(hours: 2);
 bool canCancel(Booking booking, DateTime now) =>
     booking.status == BookingStatus.active &&
     !now.isAfter(booking.startAt.subtract(cancelWindow));
+
+/// Si el administrador puede cancelar [booking] a la hora [now]: activa y sin empezar, sin el
+/// plazo de 2 horas (RF-06). Es la misma frontera que las reglas (`request.time < startAt`).
+bool canAdminCancel(Booking booking, DateTime now) =>
+    booking.status == BookingStatus.active && now.isBefore(booking.startAt);
+
+/// Largo del motivo de cancelación del administrador, como en las reglas (design.md §11).
+const cancelReasonMinLength = 3;
+const cancelReasonMaxLength = 200;
+
+/// Mensaje de error del motivo, o `null` si es válido.
+String? cancelReasonError(String? value) {
+  final length = value?.trim().length ?? 0;
+  if (length < cancelReasonMinLength) {
+    return 'Escribe el motivo (al menos $cancelReasonMinLength caracteres).';
+  }
+  if (length > cancelReasonMaxLength) {
+    return 'Usa como máximo $cancelReasonMaxLength caracteres.';
+  }
+  return null;
+}

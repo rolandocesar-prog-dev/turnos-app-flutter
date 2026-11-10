@@ -14,8 +14,23 @@ void main() {
 
   test('un rechazo de las reglas al cancelar es el plazo de 2 horas', () {
     expect(
-      bookingFailureReasonFor('permission-denied', cancelling: true),
+      bookingFailureReasonFor(
+        'permission-denied',
+        action: BookingAction.cancel,
+      ),
       BookingFailureReason.tooLateToCancel,
+    );
+  });
+
+  test(
+      'un rechazo al cancelar como administrador es que ya empezó o ya no está activa',
+      () {
+    expect(
+      bookingFailureReasonFor(
+        'permission-denied',
+        action: BookingAction.adminCancel,
+      ),
+      BookingFailureReason.notCancellable,
     );
   });
 

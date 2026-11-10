@@ -32,6 +32,34 @@ void main() {
     });
   });
 
+  group('cancelación del administrador (RF-06)', () {
+    final booking = testBooking('b', DateTime(2026, 11, 9, 15));
+
+    test('sin plazo de 2 horas, pero solo antes de que empiece', () {
+      expect(canAdminCancel(booking, DateTime(2026, 11, 9, 14, 59)), isTrue);
+      expect(canAdminCancel(booking, DateTime(2026, 11, 9, 15)), isFalse);
+      expect(canAdminCancel(booking, DateTime(2026, 11, 9, 16)), isFalse);
+    });
+
+    test('una cancelada no se vuelve a cancelar', () {
+      final cancelled = testBooking(
+        'c',
+        DateTime(2026, 11, 20, 9),
+        status: BookingStatus.cancelled,
+      );
+      expect(canAdminCancel(cancelled, DateTime(2026, 11, 9, 10)), isFalse);
+    });
+
+    test('el motivo tiene de 3 a 200 caracteres, sin contar espacios de borde',
+        () {
+      expect(cancelReasonError(null), isNotNull);
+      expect(cancelReasonError('  no  '), isNotNull);
+      expect(cancelReasonError('Luz'), isNull);
+      expect(cancelReasonError('x' * 200), isNull);
+      expect(cancelReasonError('x' * 201), isNotNull);
+    });
+  });
+
   group('bookingFromFirestore', () {
     Map<String, dynamic> data({Object? status = 'active'}) => {
           'resourceId': 'cancha',
@@ -53,6 +81,16 @@ void main() {
       expect(
         bookingFromFirestore('b2', data(status: 'cancelled')).status,
         BookingStatus.cancelled,
+      );
+      expect(booking.cancelReason, isNull);
+    });
+
+    test('lee el motivo de una cancelada por el administrador', () {
+      final withReason = data(status: 'cancelled')..['cancelReason'] = 'Lluvia';
+      expect(bookingFromFirestore('b', withReason).cancelReason, 'Lluvia');
+      expect(
+        () => bookingFromFirestore('b', data()..['cancelReason'] = 3),
+        throwsFormatException,
       );
     });
 

@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:turnos_app/src/features/admin/domain/admin_booking_repository.dart';
 import 'package:turnos_app/src/features/admin/domain/resource_editor.dart';
 import 'package:turnos_app/src/features/auth/domain/app_user.dart';
 import 'package:turnos_app/src/features/auth/domain/auth_failure.dart';
@@ -113,8 +114,10 @@ Booking testBooking(
   String uid = 'u1',
   Resource resource = testConsultorio,
   BookingStatus status = BookingStatus.active,
+  String? cancelReason,
 }) =>
     Booking(
+      cancelReason: cancelReason,
       id: id,
       resourceId: resource.id,
       resourceName: resource.name,
@@ -191,6 +194,25 @@ class FakeBookingRepository implements BookingRepository {
   @override
   Future<void> cancel(Booking booking) async {
     await _act();
+    markCancelled(booking);
+  }
+
+  /// Todas las reservas que cumplen [test], por inicio, en vivo (para el administrador).
+  Stream<List<Booking>> watchWhere(bool Function(Booking) test) {
+    List<Booking> current() => [
+          for (final b in _bookings)
+            if (test(b)) b,
+        ]..sort((a, b) => a.startAt.compareTo(b.startAt));
+    return Stream.multi((listener) {
+      listener.add(current());
+      final subscription =
+          _changes.stream.listen((_) => listener.add(current()));
+      listener.onCancel = subscription.cancel;
+    });
+  }
+
+  /// Cancela [booking], con [reason] si la cancela el administrador, y libera su franja.
+  void markCancelled(Booking booking, {String? reason}) {
     cancelled.add(booking.id);
     final index = _bookings.indexWhere((b) => b.id == booking.id);
     _bookings[index] = Booking(
@@ -202,6 +224,7 @@ class FakeBookingRepository implements BookingRepository {
       startAt: booking.startAt,
       endAt: booking.endAt,
       status: BookingStatus.cancelled,
+      cancelReason: reason,
     );
     _changes.add(null);
     slots.release(booking.resourceId, dateKey(booking.startAt), booking.slotId);
@@ -270,6 +293,39 @@ class FakeAuthRepository implements AuthRepository {
     final user = AppUser(uid: 'uid-$email', email: email);
     emit(user);
     return user;
+  }
+}
+
+/// Vista del administrador sobre las mismas reservas en memoria de [bookings]; [emails] da el
+/// correo de cada uid.
+class FakeAdminBookingRepository implements AdminBookingRepository {
+  FakeAdminBookingRepository(this.bookings, {this.emails = const {}});
+
+  final FakeBookingRepository bookings;
+  final Map<String, String> emails;
+
+  /// Si no es `null`, la próxima cancelación falla con este error.
+  BookingFailure? failWith;
+
+  @override
+  Stream<List<Booking>> watchDay(DateTime day) => bookings.watchWhere(
+        (b) =>
+            b.startAt.year == day.year &&
+            b.startAt.month == day.month &&
+            b.startAt.day == day.day,
+      );
+
+  @override
+  Future<String?> clientEmail(String uid) async => emails[uid];
+
+  @override
+  Future<void> cancel(Booking booking, String reason) async {
+    final failure = failWith;
+    if (failure != null) {
+      failWith = null;
+      throw failure;
+    }
+    bookings.markCancelled(booking, reason: reason);
   }
 }
 

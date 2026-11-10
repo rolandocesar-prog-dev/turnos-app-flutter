@@ -47,7 +47,7 @@ necesita el proyecto real de Firebase.
       pruebas, y cuenta de administrador en los datos de ejemplo (RNF-01, design.md §11).
 - [x] Rol en la app: ruta `/admin` solo para administradores y lista de todos los recursos.
 - [x] Crear, editar y desactivar recursos, con horario semanal y días bloqueados (RF-06).
-- [ ] Reservas del día y cancelación con motivo, visible para el cliente (RF-06).
+- [x] Reservas del día y cancelación con motivo, visible para el cliente (RF-06).
 - [ ] Proyecto real de Firebase y `flutterfire configure` (lo necesitan FCM, Cloud Functions y
       Hosting; design.md §6).
 - [ ] FCM: registro de tokens por usuario.
