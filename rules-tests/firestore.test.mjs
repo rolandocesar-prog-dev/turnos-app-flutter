@@ -422,6 +422,16 @@ describe('bookings/{id} con su franja', () => {
     );
     await assertFails(reservar(LUIS, { bookingId: 'bk2', slotId: '2026-12-01T12:00', booking: { cancelledBy: 'system' } }));
   });
+
+  // reminderSentAt y devOutbox son solo del servidor (design.md §13 «Envío»).
+  test('nadie más marca el recordatorio ni lee el buzón del emulador', async () => {
+    await assertFails(reservar(ANA, { booking: { reminderSentAt: serverTimestamp() } }));
+    await assertSucceeds(reservar(ANA));
+    await assertFails(cancelar(ANA, { cambios: { reminderSentAt: serverTimestamp() } }));
+    await assertFails(updateDoc(bookingRef(as(ANA)), { reminderSentAt: serverTimestamp() }));
+    await assertFails(getDoc(doc(as(ADMIN), 'devOutbox', 'a1')));
+    await assertFails(getDocs(collection(as(ANA), 'devOutbox')));
+  });
 });
 
 describe('cualquier otra colección', () => {
