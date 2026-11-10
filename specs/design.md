@@ -80,7 +80,8 @@ falla y la app muestra "Ese horario acaba de ocuparse".
 - Un cliente solo lee y escribe su `users/{uid}` y sus `bookings`.
 - `users/{uid}` (M2): solo su dueño lo lee. Al crearlo, el rol **debe** ser `client` (nadie se
   da `admin` a sí mismo) y el correo, el de su sesión. Al actualizarlo no puede cambiar `role` ni
-  `email`. No se borra desde la app. Los administradores se asignan fuera de la app.
+  `email`. No se borra desde la app. Los administradores se asignan fuera de la app. El dueño
+  también actualiza `fcmTokens` (§13).
 - `resources` (M2): lectura para usuarios autenticados; escritura solo para quien tiene
   `role == "admin"` en su `users/{uid}`.
 - `resources/{id}/slots` (M2): **lectura** para usuarios autenticados, para mostrar qué franjas
@@ -325,3 +326,20 @@ Se hace antes que el proyecto real de Firebase: todo funciona contra los emulado
     impide antes (§10), así que solo actúa ante un cliente modificado o dos reservas simultáneas.
   - `cancelledBy` lo escribe solo el servidor; las reglas no dejan que el cliente ni el
     administrador lo escriban (el administrador cancela con `cancelReason`, §11).
+
+## 13. Notificaciones push (RF-05, M4)
+
+- **Tokens**: cada dispositivo donde el cliente activa los avisos guarda su token de FCM en
+  `users/{uid}.fcmTokens` (`arrayUnion`, sin duplicados). Las reglas dejan que el dueño agregue o
+  quite tokens (lista de hasta 10 elementos) y nada más; el servidor borra los que FCM rechace al
+  enviar.
+- **Cuándo se pide el permiso**: no al iniciar sesión, sino cuando el cliente toca «Activar
+  avisos» en «Mis reservas», que explica para qué sirven (recordatorio 1 hora antes y aviso si el
+  negocio cancela). Si el navegador o el sistema niega el permiso, se explica cómo habilitarlo.
+  Un token renovado (`onTokenRefresh`) se guarda solo.
+- **Dónde funciona**: con el entorno `production` en web y Android (`pushAvailableProvider`). Con
+  los emuladores no hay FCM (el proyecto `demo-turnos` no existe en Google), así que la tarjeta
+  no se muestra. En web, `web/firebase-messaging-sw.js` recibe los avisos con la pestaña cerrada;
+  se usa la clave VAPID por defecto de Firebase.
+- `PushRepository` (dominio) pide el permiso y entrega el token; su implementación con
+  `firebase_messaging` vive en `data/`. Las pruebas usan un repositorio simulado.

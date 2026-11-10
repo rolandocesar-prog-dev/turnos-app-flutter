@@ -54,7 +54,8 @@ necesita el proyecto real de Firebase.
 - [x] Base de Cloud Functions en TypeScript (`functions/`), con pruebas y emulador en el CI
       (design.md §12).
 - [x] Límite de 3 reservas activas también en el servidor (design.md §10 y §12).
-- [ ] FCM: registro de tokens por usuario.
+- [ ] FCM: registro de tokens por usuario, con permiso pedido desde «Mis reservas»
+      (design.md §13).
 - [ ] Cloud Function programada: recordatorio 1 h antes.
 - [ ] Notificación al cliente cuando el administrador cancela su reserva (RF-05).
 
