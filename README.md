@@ -2,6 +2,14 @@
 
 [![CI](https://github.com/rolandocesar-prog-dev/turnos-app-flutter/actions/workflows/ci.yml/badge.svg)](https://github.com/rolandocesar-prog-dev/turnos-app-flutter/actions/workflows/ci.yml)
 
+> **In English.** Booking app for sports courts, clinics and other businesses with a schedule: customers book,
+> cancel and get reminders, with **no double bookings**. Flutter (Android and web), Firebase
+> (Firestore transactions and tested security rules, Auth, Cloud Functions, FCM push), Riverpod
+> and a business dashboard. 173 app tests, accessibility checks and CI.
+> **[Web version](https://turnos-rv-portafolio.web.app)**.
+>
+> The code, the documentation and the app interfaces are in Spanish.
+
 App para que canchas, consultorios y otros negocios con agenda publiquen sus horarios y sus
 clientes reserven, cancelen y reciban recordatorios, **sin reservas duplicadas**.
 
